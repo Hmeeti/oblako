@@ -1,0 +1,83 @@
+/* VIP + LOGO */
+.logo-img-wrap {
+  transition: transform 0.2s ease-out;
+}
+
+body.vip-mode {
+  --gold: #e2c98a;
+}
+
+body.vip-mode .card {
+  border-color: rgba(201, 169, 110, 0.25);
+  box-shadow:
+    0 0 0 1px rgba(201, 169, 110, 0.1),
+    0 12px 40px rgba(201, 169, 110, 0.08),
+    0 8px 32px rgba(0, 0, 0, 0.35);
+}
+
+body.vip-mode .watermark img {
+  opacity: 0.16;
+}
+
+body.vip-mode .logo-img {
+  filter: drop-shadow(0 0 24px rgba(201, 169, 110, 0.45));
+}
+
+body.vip-mode .category-hero__title,
+body.vip-mode .section-title {
+  text-shadow: 0 0 30px rgba(201, 169, 110, 0.25);
+}
+
+.vip-badge {
+  position: fixed;
+  top: 14px;
+  right: 14px;
+  z-index: 25;
+  padding: 7px 14px;
+  background: linear-gradient(135deg, rgba(201, 169, 110, 0.2), rgba(201, 169, 110, 0.05));
+  border: 1px solid rgba(201, 169, 110, 0.35);
+  border-radius: 50px;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--gold-light);
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+  opacity: 0;
+  transform: translateY(-10px);
+  transition: opacity 0.4s, transform 0.4s;
+  pointer-events: none;
+}
+
+body.vip-mode .vip-badge {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+  animation: vipGlow 3s ease infinite;
+}
+
+@keyframes vipGlow {
+  0%, 100% { box-shadow: 0 0 20px rgba(201, 169, 110, 0.15); }
+  50% { box-shadow: 0 0 30px rgba(201, 169, 110, 0.35); }
+}
+
+.burst-canvas {
+  position: fixed;
+  inset: 0;
+  z-index: 150;
+  pointer-events: none;
+}
+
+@media (max-width: 600px) {
+  .vip-badge {
+    bottom: calc(var(--dock-safe) + 8px);
+    right: 10px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vip-badge {
+    animation: none;
+  }
+}
