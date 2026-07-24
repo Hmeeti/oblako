@@ -427,22 +427,105 @@
           <textarea name="description" placeholder="Ингредиенты через запятую">${esc(item?.desc || '')}</textarea>
         </label>
         ${item ? `
-          <div class="full photo-field">
-            <span class="photo-field__label">Фото блюда</span>
-            ${item.image ? `
-              <div class="photo-field__preview">
-                <img class="thumb thumb--lg" src="${esc(item.image)}" alt="">
-                <button type="button" class="btn btn--danger btn--sm" id="clear-photo-btn">Удалить фото</button>
-              </div>
-            ` : '<p class="photo-field__empty">Фото пока нет</p>'}
-            <input type="file" name="image" accept="image/*">
-            <small class="photo-field__hint">Можно загрузить новое или просто удалить текущее</small>
-          </div>` : ''}
-        <div class="full" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:4px">
+          <div class="full photo-box">
+            <div class="photo-box__head">
+              <span class="photo-box__title">Фото блюда</span>
+              ${item.image ? '<span class="badge badge--ok">Есть фото</span>' : '<span class="badge">Нет фото</span>'}
+            </div>
+
+            <div class="photo-box__preview" id="photo-preview-wrap">
+              ${item.image
+                ? `<img class="photo-box__img" id="photo-preview" src="${esc(item.image)}" alt="">`
+                : `<div class="photo-box__placeholder" id="photo-preview">☁️<br><small>Превью появится здесь</small></div>`}
+            </div>
+
+            <div class="photo-box__url">
+              <label class="field">
+                <span>Ссылка на фото</span>
+                <div class="url-row">
+                  <input type="url" name="imageUrl" id="image-url-input" value="${esc(item.image && /^https?:/i.test(item.image) ? item.image : '')}" placeholder="https://example.com/photo.jpg или /image/optimized/IMG_123.jpg">
+                  <button type="button" class="btn btn--ghost" id="apply-url-btn">Применить</button>
+                </div>
+              </label>
+              <small class="photo-field__hint">Вставь прямую ссылку на картинку — она сразу станет фото блюда</small>
+            </div>
+
+            <div class="photo-box__or"><span>или загрузи файл</span></div>
+
+            <div class="file-pick">
+              <input type="file" name="image" id="image-file-input" accept="image/*" hidden>
+              <button type="button" class="file-pick__btn" id="pick-file-btn">
+                <span class="file-pick__ico">⬆</span>
+                <span class="file-pick__text">
+                  <strong>Выбрать файл</strong>
+                  <small id="file-name-label">JPG, PNG, WEBP — до 12 МБ</small>
+                </span>
+              </button>
+            </div>
+
+            ${item.image ? `<button type="button" class="btn btn--danger btn--sm" id="clear-photo-btn">Удалить фото</button>` : ''}
+          </div>` : `
+          <div class="full photo-box">
+            <div class="photo-box__head"><span class="photo-box__title">Фото</span></div>
+            <p class="photo-field__hint">Сначала сохрани блюдо — потом сможешь добавить фото</p>
+          </div>`}
+        <div class="full form-actions">
           <button type="submit" class="btn btn--gold" id="save-item-btn">Сохранить</button>
           <button type="button" class="btn btn--ghost" data-close-modal>Отмена</button>
         </div>
       </form>`);
+
+    const fileInput = document.getElementById('image-file-input');
+    const pickBtn = document.getElementById('pick-file-btn');
+    const fileLabel = document.getElementById('file-name-label');
+    const urlInput = document.getElementById('image-url-input');
+    const preview = document.getElementById('photo-preview');
+
+    pickBtn?.addEventListener('click', () => fileInput?.click());
+    fileInput?.addEventListener('change', () => {
+      const file = fileInput.files?.[0];
+      if (!file) return;
+      if (fileLabel) fileLabel.textContent = file.name;
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (preview?.tagName === 'IMG') {
+          preview.src = reader.result;
+        } else if (preview) {
+          preview.outerHTML = `<img class="photo-box__img" id="photo-preview" src="${reader.result}" alt="">`;
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+
+    urlInput?.addEventListener('input', () => {
+      const v = urlInput.value.trim();
+      if (!v) return;
+      const img = document.getElementById('photo-preview');
+      if (img?.tagName === 'IMG') img.src = v;
+      else if (img) img.outerHTML = `<img class="photo-box__img" id="photo-preview" src="${esc(v)}" alt="">`;
+    });
+
+    document.getElementById('apply-url-btn')?.addEventListener('click', async () => {
+      if (!item?.id) return;
+      const url = urlInput?.value.trim();
+      if (!url) {
+        toast('Вставь ссылку на фото', false);
+        return;
+      }
+      if (busy) return;
+      busy = true;
+      try {
+        await api(`/items/${item.id}/image-url`, { method: 'POST', body: { url } });
+        await loadData();
+        closeModal();
+        renderItems();
+        toast('Фото по ссылке сохранено');
+      } catch (err) {
+        toast(err.message, false);
+      } finally {
+        busy = false;
+      }
+    });
 
     document.getElementById('clear-photo-btn')?.addEventListener('click', async () => {
       if (!item?.id) return;
@@ -488,11 +571,14 @@
       try {
         if (item) {
           await api(`/items/${item.id}`, { method: 'PUT', body });
-          const file = fd.get('image');
+          const file = fileInput?.files?.[0] || fd.get('image');
+          const imageUrl = String(fd.get('imageUrl') || '').trim();
           if (file && file.size) {
             const imgFd = new FormData();
             imgFd.append('image', file);
             await api(`/items/${item.id}/image`, { method: 'POST', body: imgFd });
+          } else if (imageUrl) {
+            await api(`/items/${item.id}/image-url`, { method: 'POST', body: { url: imageUrl } });
           }
         } else {
           await api('/items', { method: 'POST', body });
@@ -717,6 +803,7 @@
       'item.update': 'Изменение блюда',
       'item.delete': 'Удаление блюда',
       'item.image.assign': 'Фото назначено',
+      'item.image.url': 'Фото по ссылке',
       'item.image.clear': 'Фото снято',
       'category.create': 'Новая категория',
       'category.update': 'Категория изменена',

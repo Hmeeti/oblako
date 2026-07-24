@@ -266,6 +266,35 @@ router.post('/items/:id/image', requireAuth, upload.single('image'), (req, res) 
   res.json({ image: imagePath });
 });
 
+router.post('/items/:id/image-url', requireAuth, express.json(), (req, res) => {
+  const existing = db.prepare('SELECT * FROM menu_items WHERE id = ?').get(req.params.id);
+  if (!existing) return res.status(404).json({ error: 'Not found' });
+
+  let url = String(req.body?.url || '').trim();
+  if (!url) return res.status(400).json({ error: 'URL required' });
+
+  // Allow relative paths like /image/... and absolute http(s) URLs
+  if (!url.startsWith('/') && !/^https?:\/\//i.test(url)) {
+    return res.status(400).json({ error: 'Нужна ссылка http(s):// или путь /image/...' });
+  }
+
+  db.prepare(`
+    UPDATE menu_items SET image_path = ?, image_source = 'url', match_confidence = 1, updated_at = datetime('now')
+    WHERE id = ?
+  `).run(url, req.params.id);
+
+  logActivity({
+    actor: actor(req),
+    action: 'item.image.url',
+    entityType: 'menu_item',
+    entityId: req.params.id,
+    details: { url },
+    ip: clientIp(req),
+  });
+  syncPublicMenu();
+  res.json({ image: url });
+});
+
 router.post('/items/:id/image/clear', requireAuth, (req, res) => {
   db.prepare(`
     UPDATE menu_items SET image_path = NULL, image_source = NULL, match_confidence = NULL, updated_at = datetime('now')
