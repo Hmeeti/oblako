@@ -1,0 +1,10 @@
+node_modules/
+.env
+data/*.db
+data/*.db-*
+public/image/optimized/
+public/image/uploads/
+image/optimized/
+image/uploads/
+*.log
+.DS_Store

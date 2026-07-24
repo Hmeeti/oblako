@@ -1,0 +1,32 @@
+{
+  "name": "oblako-menu",
+  "version": "2.0.0",
+  "description": "OBLAKO restaurant menu with automated image matching and admin panel",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js",
+    "seed": "node scripts/seed-menu.js",
+    "match-images": "node scripts/match-images.js",
+    "hash-password": "node scripts/hash-password.js",
+    "setup": "node scripts/setup.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "bcrypt": "^5.1.1",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.5.0",
+    "express-session": "^1.18.1",
+    "heic-convert": "^2.1.0",
+    "multer": "^1.4.5-lts.1",
+    "sharp": "^0.33.5",
+    "uuid": "^11.0.3"
+  },
+  "allowScripts": {
+    "bcrypt@5.1.1": true,
+    "sharp@0.33.5": true
+  }
+}
