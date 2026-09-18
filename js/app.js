@@ -91,7 +91,7 @@ function pluralPos(n) {
 }
 
 function isFilled(item) {
-  return Boolean(item.name && item.price != null);
+  return Boolean(item.name);
 }
 
 function getFiltered() {
@@ -257,6 +257,7 @@ function appendItemGroups(parent, items) {
 }
 
 function formatPrice(price) {
+  if (price == null) return 'по запросу';
   return `${price.toLocaleString('ru-RU')} ₸`;
 }
 
