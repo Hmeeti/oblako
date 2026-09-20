@@ -21,7 +21,7 @@ function initDb() {
       subcat TEXT,
       name TEXT NOT NULL,
       description TEXT,
-      price INTEGER NOT NULL,
+      price INTEGER,
       price2 INTEGER,
       price_label TEXT,
       price2_label TEXT,

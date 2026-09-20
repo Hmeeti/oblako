@@ -44,7 +44,7 @@ MENU.forEach(item => {
     item.subcat || null,
     item.name,
     item.desc || null,
-    item.price,
+    item.price ?? null,
     item.price2 ?? null,
     item.priceLabel || null,
     item.price2Label || null,

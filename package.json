@@ -8,6 +8,7 @@
     "dev": "node --watch server/index.js",
     "seed": "node scripts/seed-menu.js",
     "match-images": "node scripts/match-images.js",
+    "assign-photos": "node scripts/assign-photos.js",
     "hash-password": "node scripts/hash-password.js",
     "setup": "node scripts/setup.js"
   },
