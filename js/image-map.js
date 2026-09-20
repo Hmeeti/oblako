@@ -88,6 +88,6 @@ const IMAGE_MAP = {
 
 if (typeof MENU !== 'undefined') {
   MENU.forEach(item => {
-    if (IMAGE_MAP[item.id]) item.image = IMAGE_MAP[item.id];
+    if (!item.image && IMAGE_MAP[item.id]) item.image = IMAGE_MAP[item.id];
   });
 }

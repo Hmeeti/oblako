@@ -38,6 +38,22 @@
 | `ADMIN_PASSWORD_HASH` | см. ниже |
 | `CORS_ORIGINS` | `https://hmeeti.github.io` |
 | `DATABASE_PATH` | `data/oblako.db` |
+| `PUBLIC_BASE_URL` | `https://oblako-xxxx.onrender.com` (твой URL) |
+| `GITHUB_REPO` | `Hmeeti/oblako` |
+| `GITHUB_BRANCH` | `main` |
+| `GITHUB_TOKEN` | GitHub PAT (см. ниже) — **обязательно** для автопуша |
+
+### Автопуш меню в GitHub (обязательно)
+
+Без токена правки админки живут только на Render. Гости на GitHub Pages видят старое меню.
+
+1. GitHub → **Settings → Developer settings → Personal access tokens**
+2. Создай token (fine-grained или classic):
+   - Repository: `Hmeeti/oblako`
+   - Permissions → **Contents: Read and write**
+3. В Render → Environment → `GITHUB_TOKEN` = вставь токен → **Save** → Redeploy
+
+После сохранения блюда в админке сервер сам коммитит `js/data.js` и `js/image-map.js` в `main`. GitHub Pages обновится за ~1 минуту. Другие телефоны также подтягивают `/api/menu` с Render (с ретраями).
 
 ### `ADMIN_PASSWORD_HASH` для пароля `9987650`
 

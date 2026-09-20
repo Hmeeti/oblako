@@ -396,30 +396,66 @@
     trackEvent('category_view', { category });
   }
 
+  function apiBase() {
+    return (window.OBLAKO_CONFIG && window.OBLAKO_CONFIG.apiBase)
+      ? String(window.OBLAKO_CONFIG.apiBase).replace(/\/$/, '')
+      : '';
+  }
+
+  function resolveImageUrl(src) {
+    if (!src) return '';
+    const s = String(src);
+    if (/^https?:\/\//i.test(s) || s.startsWith('data:')) return s;
+    // Absolute server paths (/image/uploads/...) must hit the API host on GitHub Pages
+    if (s.startsWith('/')) {
+      const base = apiBase();
+      return base ? `${base}${s}` : s;
+    }
+    return s;
+  }
+
   function applyApiMenu(data) {
-    if (!data?.items?.length) return;
+    if (!data?.items?.length) return false;
 
     MENU.length = 0;
-    data.items.forEach(item => MENU.push(item));
-
-    if (typeof IMAGE_MAP !== 'undefined') {
-      MENU.forEach(item => {
-        if (IMAGE_MAP[item.id]) item.image = IMAGE_MAP[item.id];
-      });
-    }
+    data.items.forEach(item => {
+      const next = { ...item };
+      if (next.image) next.image = resolveImageUrl(next.image);
+      // Fallback to static map only when API item has no photo
+      else if (typeof IMAGE_MAP !== 'undefined' && IMAGE_MAP[next.id]) {
+        next.image = resolveImageUrl(IMAGE_MAP[next.id]);
+      }
+      MENU.push(next);
+    });
 
     if (data.categories?.length) {
       CATEGORY_ORDER.length = 0;
       data.categories.forEach(c => CATEGORY_ORDER.push(c));
     }
+    return true;
   }
 
   function apiUrl(path) {
-    const base = (window.OBLAKO_CONFIG && window.OBLAKO_CONFIG.apiBase)
-      ? String(window.OBLAKO_CONFIG.apiBase).replace(/\/$/, '')
-      : '';
+    const base = apiBase();
     if (!path.startsWith('/')) path = `/${path}`;
     return `${base}${path}`;
+  }
+
+  async function fetchMenuOnce(timeoutMs) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const url = `${apiUrl('/api/menu')}?_=${Date.now()}`;
+      const res = await fetch(url, {
+        signal: controller.signal,
+        cache: 'no-store',
+        headers: { Accept: 'application/json' },
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return await res.json();
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
   async function loadMenuFromApi() {
@@ -434,27 +470,47 @@
       return;
     }
 
-    try {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 8000);
-      const res = await fetch(apiUrl('/api/menu'), { signal: controller.signal });
-      clearTimeout(timer);
-      if (!res.ok) return;
-      const data = await res.json();
-      applyApiMenu(data);
-      buildTabs();
-      setViewMode();
-      trackEvent('page_view');
-    } catch (_) {
-      // Offline / cold start — local MENU from data.js is enough
+    // Normalize static images for hybrid hosting
+    MENU.forEach(item => {
+      if (item.image) item.image = resolveImageUrl(item.image);
+    });
+
+    const delays = [0, 2500, 6000];
+    for (let i = 0; i < delays.length; i++) {
+      if (delays[i]) await new Promise(r => setTimeout(r, delays[i]));
+      try {
+        // Cold start on Render free tier can take ~30s — later attempts use longer timeout
+        const data = await fetchMenuOnce(i === 0 ? 10000 : 25000);
+        if (applyApiMenu(data)) {
+          buildTabs();
+          setViewMode();
+          trackEvent('page_view');
+          return;
+        }
+      } catch (_) {
+        // retry
+      }
     }
   }
+
+  // Soft refresh every 2 minutes so other phones pick up admin edits via API
+  setInterval(() => {
+    if (document.visibilityState !== 'visible') return;
+    fetchMenuOnce(12000)
+      .then(data => {
+        if (!applyApiMenu(data)) return;
+        buildTabs();
+        setViewMode();
+      })
+      .catch(() => {});
+  }, 120000);
 
   window.OBLAKO = Object.assign(window.OBLAKO || {}, {
     openRules,
     goHome,
     scrollToTabs,
     openCart: () => window.OBLAKO_CART?.open(),
+    reloadMenu: loadMenuFromApi,
   });
 
   buildTabs();

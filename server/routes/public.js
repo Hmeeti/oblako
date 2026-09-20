@@ -4,9 +4,12 @@ const { getPublicMenu, getCategoryOrder, trackEvent } = require('../db');
 const router = express.Router();
 
 router.get('/menu', (req, res) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+  res.set('Pragma', 'no-cache');
   res.json({
     categories: getCategoryOrder(),
     items: getPublicMenu(),
+    updatedAt: new Date().toISOString(),
   });
 });
 

@@ -25,3 +25,12 @@ services:
         value: data/oblako.db
       - key: ADMIN_PATH
         value: ctl/x7k9m2p4w4oblako
+      - key: PUBLIC_BASE_URL
+        value: https://oblako-lppn.onrender.com
+      - key: GITHUB_REPO
+        value: Hmeeti/oblako
+      - key: GITHUB_BRANCH
+        value: main
+      # Create a GitHub PAT (Contents: Read and Write) and set this in Render Dashboard → Environment
+      - key: GITHUB_TOKEN
+        sync: false

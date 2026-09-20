@@ -12,14 +12,16 @@ const {
 } = require('../db');
 const { requireAuth } = require('../auth');
 const { syncMenuToDataJs } = require('../sync-data');
+const { pushBinaryFile, cfg: githubCfg } = require('../github-sync');
 
 const router = express.Router();
 
 function syncPublicMenu() {
   try {
-    syncMenuToDataJs();
+    return syncMenuToDataJs();
   } catch (err) {
     console.warn('[sync]', err.message);
+    return null;
   }
 }
 
@@ -58,6 +60,8 @@ router.get('/session', (req, res) => {
 });
 
 router.get('/dashboard', requireAuth, (_req, res) => {
+  const { cfg } = require('../github-sync');
+  const gh = cfg();
   const stats = {
     items: db.prepare('SELECT COUNT(*) AS c FROM menu_items WHERE active = 1').get().c,
     categories: db.prepare('SELECT COUNT(*) AS c FROM categories').get().c,
@@ -74,6 +78,12 @@ router.get('/dashboard', requireAuth, (_req, res) => {
       SELECT id, actor, action, entity_type, entity_id, details, created_at
       FROM activity_logs ORDER BY created_at DESC LIMIT 8
     `).all(),
+    githubSync: {
+      configured: Boolean(gh.token),
+      repo: gh.repo,
+      branch: gh.branch,
+      publicBase: gh.publicBase || null,
+    },
   };
   res.json(stats);
 });
@@ -263,7 +273,19 @@ router.post('/items/:id/image', requireAuth, upload.single('image'), (req, res) 
     ip: clientIp(req),
   });
   syncPublicMenu();
-  res.json({ image: imagePath });
+  // Also mirror upload into GitHub so Pages can serve it if needed
+  const localFile = path.join(uploadDir, req.file.filename);
+  const remotePath = `image/uploads/${req.file.filename}`;
+  pushBinaryFile(remotePath, localFile, `chore(menu): upload photo for ${req.params.id}`)
+    .then(r => {
+      if (r.pushed) console.log('[github-sync] uploaded', remotePath);
+      if (r.skipped) console.warn('[github-sync] upload skipped:', r.reason);
+    })
+    .catch(err => console.error('[github-sync] upload failed:', err.message));
+
+  const publicBase = githubCfg().publicBase;
+  const publicImage = publicBase ? `${publicBase}${imagePath}` : imagePath;
+  res.json({ image: imagePath, publicImage });
 });
 
 router.post('/items/:id/image-url', requireAuth, express.json(), (req, res) => {

@@ -275,12 +275,22 @@
     const el = document.getElementById('view-dashboard');
     await safeRender(el, async () => {
       const stats = await api('/dashboard');
+      const gh = stats.githubSync || {};
+      const ghOk = gh.configured;
       el.innerHTML = `
         <div class="stats">
           <div class="stat"><div class="stat__val">${stats.items}</div><div class="stat__label">Блюд в меню</div></div>
           <div class="stat"><div class="stat__val">${stats.withImages}</div><div class="stat__label">С фото</div></div>
           <div class="stat"><div class="stat__val">${stats.viewsToday}</div><div class="stat__label">Просмотров сегодня</div></div>
           <div class="stat"><div class="stat__val">${stats.viewsWeek}</div><div class="stat__label">За 7 дней</div></div>
+        </div>
+        <div class="panel">
+          <div class="panel__head"><h3 class="panel__title">Синхронизация GitHub Pages</h3></div>
+          <p class="panel__hint">
+            ${ghOk
+              ? `✅ Автопуш включён → <code>${esc(gh.repo)}</code> / <code>${esc(gh.branch)}</code>. После сохранения меню уходит в GitHub (~1 мин на обновление Pages).`
+              : '⚠️ Нет <code>GITHUB_TOKEN</code> на Render — правки остаются только на сервере админки. Добавь токен в Environment, иначе гости на GitHub Pages видят старое меню.'}
+          </p>
         </div>
         <div class="panel">
           <div class="panel__head"><h3 class="panel__title">Последние действия</h3></div>
@@ -311,7 +321,7 @@
           <h3 class="panel__title">Блюда · ${items.length}</h3>
           <button type="button" class="btn btn--gold btn--sm" id="add-item-btn">+ Добавить блюдо</button>
         </div>
-        <p class="panel__hint">Ищите по названию или составу. Изменения сразу видны гостям на сайте.</p>
+          <p class="panel__hint">Ищите по названию. Сохранение пушит меню в GitHub и обновляет всех гостей.</p>
         <div class="filters">
           <input type="search" id="item-search" placeholder="Поиск: цезарь, семга, пицца…">
           <select id="item-cat-filter">
@@ -586,7 +596,7 @@
         await loadData();
         closeModal();
         renderItems();
-        toast('Сохранено — меню обновлено');
+        toast('Сохранено — синхронизация со всеми устройствами и GitHub…');
       } catch (err) {
         toast(err.message, false);
         btn.disabled = false;
