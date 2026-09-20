@@ -14,28 +14,18 @@ Full-stack menu for **OBLAKO Lounge Bar**: public site, hidden admin panel, SQLi
 | Public UI | Existing OBLAKO static frontend + `/api/menu` |
 | Admin UI | SPA at obscure URL (not linked publicly) |
 
-## Quick start
+## Hybrid deploy (GitHub Pages + Railway)
 
-```bash
-# 1. Install dependencies
-npm install
+Гостевое меню на **GitHub Pages**, админка и API на **Railway**.
 
-# 2. First-time setup (creates .env, seeds menu from js/data.js)
-npm run setup
+Пошаговая инструкция: **[DEPLOY-HYBRID.md](./DEPLOY-HYBRID.md)**
 
-# 3. Start the server
-npm start
-```
-
-- **Public menu:** http://localhost:3000  
-- **Admin panel:** http://localhost:3000/ctl/x7k9m2p4w4oblako (change `ADMIN_PATH` in `.env`)
-
-On first setup, a **temporary admin password** is printed to the terminal. Change it immediately:
-
-```bash
-npm run hash-password -- "your-new-secure-password"
-# Copy the hash into .env → ADMIN_PASSWORD_HASH=
-```
+Кратко:
+1. Задеплой репозиторий на Railway, получи домен.
+2. Пропиши URL в `js/config.js` (`apiBase` + `adminUrl`).
+3. Включи GitHub Pages через Actions (workflow уже в репо).
+4. Админка: `https://your-app.up.railway.app/admin.html`  
+   Логин: `hmeeti` / `2289073`
 
 ## Environment variables
 

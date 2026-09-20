@@ -422,7 +422,10 @@ document.getElementById('open-rules')?.addEventListener('click', openRules);
 
 function trackEvent(eventType, meta = {}) {
   if (location.protocol === 'file:') return;
-  fetch('/api/analytics/event', {
+  const base = (window.OBLAKO_CONFIG && window.OBLAKO_CONFIG.apiBase)
+    ? String(window.OBLAKO_CONFIG.apiBase).replace(/\/$/, '')
+    : '';
+  fetch(`${base}/api/analytics/event`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ eventType, path: location.pathname, ...meta }),
@@ -454,6 +457,14 @@ function applyApiMenu(data) {
   }
 }
 
+function apiUrl(path) {
+  const base = (typeof window !== 'undefined' && window.OBLAKO_CONFIG && window.OBLAKO_CONFIG.apiBase)
+    ? String(window.OBLAKO_CONFIG.apiBase).replace(/\/$/, '')
+    : '';
+  if (!path.startsWith('/')) path = `/${path}`;
+  return `${base}${path}`;
+}
+
 async function loadMenuFromApi() {
   if (location.protocol === 'file:') {
     const root = document.getElementById('menu-root');
@@ -467,7 +478,7 @@ async function loadMenuFromApi() {
   }
 
   try {
-    const res = await fetch('/api/menu');
+    const res = await fetch(apiUrl('/api/menu'));
     if (!res.ok) return;
     const data = await res.json();
     applyApiMenu(data);

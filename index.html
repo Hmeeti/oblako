@@ -85,7 +85,7 @@
       Разработано
       <span class="site-footer__dev-name">hmeeti</span>
     </p>
-    <a href="admin.html" class="admin-link" title="Админ-панель">Админка</a>
+    <a href="admin.html" class="admin-link" id="admin-link" title="Админ-панель">Админка</a>
   </footer>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -113,6 +113,7 @@
     </button>
   </nav>
 
+  <script src="js/config.js"></script>
   <script src="js/data.js"></script>
   <script src="js/image-map.js"></script>
   <script src="js/rules.js"></script>
@@ -122,5 +123,16 @@
   <script src="js/ui.js"></script>
   <script src="js/wow.js"></script>
   <script src="js/fun.js"></script>
+  <script>
+    (function () {
+      var cfg = window.OBLAKO_CONFIG || {};
+      var link = document.getElementById('admin-link');
+      if (link && cfg.adminUrl) {
+        link.href = cfg.adminUrl.replace(/\/$/, '') + '/admin.html';
+        link.target = '_blank';
+        link.rel = 'noopener';
+      }
+    })();
+  </script>
 </body>
 </html>

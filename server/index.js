@@ -4,13 +4,27 @@ const express = require('express');
 const session = require('express-session');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
+const fs = require('fs');
+const { execSync } = require('child_process');
 
-const { initDb, logActivity } = require('./db');
+const { initDb, logActivity, db } = require('./db');
 const { getAdminConfig, verifyLogin } = require('./auth');
 const publicRoutes = require('./routes/public');
 const adminRoutes = require('./routes/admin');
 
-initDb();
+function ensureSeeded() {
+  try {
+    initDb();
+    const count = db.prepare('SELECT COUNT(*) AS c FROM menu_items').get().c;
+    if (count > 0) return;
+    console.log('[boot] Empty database — seeding from js/data.js …');
+    execSync('node scripts/seed-menu.js', { stdio: 'inherit' });
+  } catch (err) {
+    console.warn('[boot] seed skipped:', err.message);
+  }
+}
+
+ensureSeeded();
 
 const app = express();
 const { adminPath } = getAdminConfig();
@@ -18,6 +32,24 @@ const adminBase = `/${adminPath}`;
 
 app.disable('x-powered-by');
 app.set('trust proxy', 1);
+
+// CORS for GitHub Pages → Railway public API
+const corsOrigins = String(process.env.CORS_ORIGINS || process.env.PUBLIC_ORIGINS || '')
+  .split(',')
+  .map(s => s.trim())
+  .filter(Boolean);
+
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin && corsOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    res.setHeader('Vary', 'Origin');
+  }
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
+  next();
+});
 
 app.use(express.json({ limit: '1mb' }));
 
@@ -79,6 +111,10 @@ function handleLogout(req, res) {
   });
 }
 
+app.get('/api/health', (_req, res) => {
+  res.json({ ok: true, service: 'oblako', time: new Date().toISOString() });
+});
+
 // Public API
 app.use('/api', publicRoutes);
 
@@ -102,7 +138,7 @@ app.get('/robots.txt', (_req, res) => {
   res.type('text/plain').send('User-agent: *\nAllow: /\nDisallow: /admin.html\nDisallow: /admin-panel/\n');
 });
 
-// Public static site (includes admin.html)
+// Public static site (includes admin.html) — also used on Railway
 app.use(express.static(path.join(__dirname, '..'), {
   index: 'index.html',
   extensions: ['html'],
@@ -116,7 +152,14 @@ const port = Number(process.env.PORT) || 3000;
 app.listen(port, () => {
   console.log(`OBLAKO menu running at http://localhost:${port}`);
   console.log(`Admin panel: http://localhost:${port}/admin.html`);
+  if (corsOrigins.length) {
+    console.log(`CORS origins: ${corsOrigins.join(', ')}`);
+  }
   if (!process.env.ADMIN_PASSWORD_HASH) {
     console.warn('Set ADMIN_PASSWORD_HASH in .env — run: npm run hash-password -- "your-password"');
   }
+  // ensure data dir exists for SQLite
+  try {
+    fs.mkdirSync(path.dirname(path.resolve(process.cwd(), process.env.DATABASE_PATH || 'data/oblako.db')), { recursive: true });
+  } catch (_) { /* ignore */ }
 });

@@ -13,7 +13,7 @@
     "setup": "node scripts/setup.js"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=22"
   },
   "dependencies": {
     "bcrypt": "^5.1.1",
