@@ -60,6 +60,7 @@
       if (action === 'home') window.OBLAKO.goHome();
       if (action === 'categories') window.OBLAKO.scrollToTabs();
       if (action === 'rules') window.OBLAKO.openRules();
+      if (action === 'cart') window.OBLAKO.openCart?.();
       if (action === 'top') window.scrollTo({ top: 0, behavior: 'smooth' });
 
       dock.querySelectorAll('.dock__btn').forEach(b => b.classList.remove('dock__btn--active'));

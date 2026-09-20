@@ -18,14 +18,15 @@ async function ensurePasswordHash() {
     return;
   }
 
-  const tempPass = `Oblako${Date.now().toString(36)}!`;
+  // Keep in sync with START.bat default credentials
+  const tempPass = '2289073';
   const hash = await bcrypt.hash(tempPass, 12);
   const updated = env.includes('ADMIN_PASSWORD_HASH=')
     ? env.replace(/ADMIN_PASSWORD_HASH=.*/, `ADMIN_PASSWORD_HASH=${hash}`)
     : env + `\nADMIN_PASSWORD_HASH=${hash}\n`;
 
   fs.writeFileSync(envPath, updated);
-  console.log('\n=== Temporary admin password (change after first login) ===');
+  console.log('\n=== Admin password ===');
   console.log(`Username: hmeeti`);
   console.log(`Password: ${tempPass}`);
   console.log('========================================================\n');

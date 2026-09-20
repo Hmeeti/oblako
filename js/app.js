@@ -60,6 +60,7 @@
       if (action === 'home') window.OBLAKO.goHome();
       if (action === 'categories') window.OBLAKO.scrollToTabs();
       if (action === 'rules') window.OBLAKO.openRules();
+      if (action === 'cart') window.OBLAKO.openCart?.();
       if (action === 'top') window.scrollTo({ top: 0, behavior: 'smooth' });
 
       dock.querySelectorAll('.dock__btn').forEach(b => b.classList.remove('dock__btn--active'));
@@ -290,6 +291,7 @@ function buildCard(item) {
     ? `<img src="${item.image}" alt="${item.name}" class="card-photo__img" loading="lazy" decoding="async">`
     : '';
 
+  const canAdd = item.price != null;
   card.innerHTML = `
     <div class="card-photo">${photoInner}</div>
     <div class="card-body">
@@ -297,9 +299,20 @@ function buildCard(item) {
       ${item.desc ? `<p class="card-desc">${item.desc}</p>` : ''}
       <div class="card-footer">
         ${buildPriceBlock(item)}
+        ${canAdd ? `<button type="button" class="card-add" data-add="${item.id}">В заказ</button>` : ''}
       </div>
     </div>
   `;
+
+  const addBtn = card.querySelector('[data-add]');
+  if (addBtn) {
+    addBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      if (window.OBLAKO_CART) window.OBLAKO_CART.add(item);
+      else if (window.OBLAKO?.addToCart) window.OBLAKO.addToCart(item);
+    });
+  }
+
   return card;
 }
 
@@ -360,7 +373,7 @@ function scrollToTabs() {
   document.querySelector('.tabs-outer')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-window.OBLAKO = { openRules, goHome, scrollToTabs };
+window.OBLAKO = { openRules, goHome, scrollToTabs, openCart: () => window.OBLAKO_CART?.open() };
 
 function updateSearchClear() {
   const input = document.getElementById('search');
