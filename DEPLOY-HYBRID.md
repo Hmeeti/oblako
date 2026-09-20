@@ -1,7 +1,7 @@
 # Гибридный деплой OBLAKO
 
 Гостевое меню → **GitHub Pages**  
-Админка + API → **Railway**
+Админка + API → **Render**
 
 Так админка работает в интернете, а меню остаётся быстрым на Pages.
 
@@ -10,68 +10,74 @@
 ## Схема
 
 ```
-Гости  →  https://<user>.github.io/oblako/     (меню, фото, корзина)
-Админ  →  https://<project>.up.railway.app/admin.html  (редактирование)
-Меню на Pages подтягивает актуальные цены с Railway: /api/menu
+Гости  →  https://<user>.github.io/oblako/        (меню, фото, корзина)
+Админ  →  https://oblako-xxxx.onrender.com/admin.html
+Меню на Pages берёт актуальные цены с Render: /api/menu
 ```
 
 ---
 
-## Шаг 1. Railway (админка + API)
+## Шаг 1. Render (админка + API)
 
-1. Зайди на [railway.app](https://railway.app) и войди через GitHub.
-2. **New Project → Deploy from GitHub repo → Hmeeti/oblako**.
-3. Railway сам соберёт Node 22 и запустит `npm start`.
-4. Открой сервис → **Settings → Networking → Generate Domain**.  
-   Скопируй URL, например: `https://oblako-production-xxxx.up.railway.app`
-5. В **Variables** добавь:
+1. Зайди на [render.com](https://render.com) и войди через GitHub.
+2. **New → Blueprint** (или **Web Service**) → выбери репозиторий `Hmeeti/oblako`.
+3. Если через Blueprint — подхватится файл `render.yaml` из репо.
+4. Если вручную **Web Service**:
+   - **Runtime:** Node
+   - **Build Command:** `npm install`
+   - **Start Command:** `npm start`
+   - **Instance type:** Free
+5. В **Environment** добавь переменные:
 
-| Variable | Значение |
+| Key | Value |
 |---|---|
 | `NODE_ENV` | `production` |
+| `NODE_VERSION` | `22` |
 | `SESSION_SECRET` | любая длинная случайная строка |
 | `ADMIN_USERNAME` | `hmeeti` |
-| `ADMIN_PASSWORD_HASH` | хеш пароля (см. ниже) |
-| `CORS_ORIGINS` | URL твоего GitHub Pages, например `https://hmeeti.github.io` |
+| `ADMIN_PASSWORD_HASH` | см. ниже |
+| `CORS_ORIGINS` | `https://hmeeti.github.io` |
 | `DATABASE_PATH` | `data/oblako.db` |
 
-### Как получить `ADMIN_PASSWORD_HASH`
+### `ADMIN_PASSWORD_HASH` для пароля `2289073`
 
-Локально:
-
-```bash
-npm run hash-password -- "2289073"
-```
-
-Скопируй строку `$2b$12$...` в Railway Variable `ADMIN_PASSWORD_HASH`.
-
-Можно сразу вставить этот хеш для пароля `2289073`:
+Вставь как есть:
 
 ```
 $2b$12$rG/8mfkPEr.m00YRyVhAVeCNlU3Vt533Rkei9Uy2RB6YYrtgN8aMy
 ```
 
-6. (Рекомендуется) **Settings → Volumes**: примонтируй volume в `/app/data`, чтобы база не стиралась при редеплое.  
-   Тогда поставь `DATABASE_PATH=/app/data/oblako.db`.
+Или сгенерируй локально:
 
-7. Проверь:
-   - `https://ТВОЙ-RAILWAY/api/health` → `{"ok":true,...}`
-   - `https://ТВОЙ-RAILWAY/admin.html` → логин `hmeeti` / `2289073`
+```bash
+npm run hash-password -- "2289073"
+```
+
+6. Нажми **Deploy**. Дождись статуса **Live**.
+7. Скопируй URL сервиса, например:  
+   `https://oblako-xxxx.onrender.com`
+
+8. Проверь:
+   - `https://ТВОЙ-URL/api/health` → `{"ok":true,...}`
+   - `https://ТВОЙ-URL/admin.html` → логин **hmeeti** / **2289073**
+
+> На бесплатном плане Render «засыпает» без трафика ~15 мин. Первый вход после паузы может подождать 30–60 сек.
 
 ---
 
-## Шаг 2. Прописать URL Railway в меню
+## Шаг 2. Прописать URL Render в меню
 
-Открой файл `js/config.js` в репозитории и вставь свой Railway URL:
+Открой `js/config.js` и вставь свой URL:
 
 ```js
 window.OBLAKO_CONFIG = {
-  apiBase: 'https://ТВОЙ-ПРОЕКТ.up.railway.app',
-  adminUrl: 'https://ТВОЙ-ПРОЕКТ.up.railway.app',
+  apiBase: 'https://oblako-xxxx.onrender.com',
+  adminUrl: 'https://oblako-xxxx.onrender.com',
 };
 ```
 
-Закоммить и запушь в `main`.
+Закоммить и запушь в `main`  
+(или пришли URL — можно прописать за тебя).
 
 ---
 
@@ -79,14 +85,12 @@ window.OBLAKO_CONFIG = {
 
 1. Репозиторий → **Settings → Pages**.
 2. **Source**: GitHub Actions.
-3. Workflow `Deploy GitHub Pages` уже лежит в `.github/workflows/deploy-pages.yml` — после пуша в `main` он сам задеплоит меню.
-4. Через 1–2 минуты меню будет на:
+3. Workflow уже есть: `.github/workflows/deploy-pages.yml`.
+4. После пуша в `main` меню появится на:  
    `https://<твой-логин>.github.io/oblako/`
 
-В **CORS_ORIGINS** на Railway укажи origin без пути:
+В `CORS_ORIGINS` на Render укажи origin **без пути**:
 `https://<твой-логин>.github.io`
-
-Если репозиторий в организации/другом имени — подставь свой Pages URL.
 
 ---
 
@@ -95,24 +99,22 @@ window.OBLAKO_CONFIG = {
 | Что | Где |
 |---|---|
 | Меню гостей | GitHub Pages |
-| Кнопка «Админка» в футере | ведёт на Railway `/admin.html` |
-| Логин админки | `hmeeti` / `2289073` |
-| Изменения цен в админке | сразу видны на Pages (через `/api/menu`) |
+| Кнопка «Админка» в футере | ведёт на Render `/admin.html` |
+| Логин | `hmeeti` / `2289073` |
+| Правки цен в админке | видны на Pages через `/api/menu` |
 
 ---
 
 ## Важно
 
-- **Админку открывай только с Railway-адреса**, не с Pages.
-- Фото блюд лежат в репозитории (`image/dishes/`) и отдаются с Pages.
-- Если загружаешь новое фото через админку на Railway — оно попадёт на диск Railway. Для Pages лучше класть фото в `image/dishes/` и пушить в GitHub.
-- Без Volume база на Railway может сброситься после редеплоя (меню пересоздастся из `js/data.js` автоматически).
+- Админку открывай **только с адреса Render**, не с Pages.
+- Фото лежат в репо (`image/dishes/`) и отдаются с Pages.
+- На Free-плане диск эфемерный: после редеплоя база может сброситься и заново засеется из `js/data.js`. Для постоянных правок лучше потом пушить обновлённое меню в GitHub.
+- Первый запрос после «сна» Render бывает медленным — это нормально для free.
 
 ---
 
-## Локальная разработка
-
-Как раньше:
+## Локально
 
 ```bash
 npm install
@@ -120,4 +122,9 @@ npm run setup
 npm start
 ```
 
-`js/config.js` → оставь `apiBase: ''` и `adminUrl: ''` для localhost.
+В `js/config.js` для localhost оставь:
+
+```js
+apiBase: '',
+adminUrl: '',
+```

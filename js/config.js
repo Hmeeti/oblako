@@ -1,16 +1,16 @@
 /**
  * Frontend config for hybrid hosting:
  * - GitHub Pages = guest menu (static)
- * - Railway/Render = API + admin panel
+ * - Render = API + admin panel
  *
- * After Railway deploy, set apiBase to your public Railway URL
- * (no trailing slash), e.g. "https://oblako-production.up.railway.app"
+ * After Render deploy, set both URLs (no trailing slash), e.g.
+ *   "https://oblako-xxxx.onrender.com"
  *
- * Leave apiBase empty ("") for local same-origin / npm start.
+ * Leave empty ("") for local same-origin / npm start.
  */
 window.OBLAKO_CONFIG = {
-  // TODO: replace after Railway deploy
+  // TODO: replace after Render deploy
   apiBase: '',
-  // Full admin URL on Railway (opens from the Pages footer link)
+  // Admin opens from the Pages footer link
   adminUrl: '',
 };

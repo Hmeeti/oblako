@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: oblako
+    runtime: node
+    plan: free
+    region: frankfurt
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: "22"
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: ADMIN_USERNAME
+        value: hmeeti
+      - key: ADMIN_PASSWORD_HASH
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: DATABASE_PATH
+        value: data/oblako.db
+      - key: ADMIN_PATH
+        value: ctl/x7k9m2p4w4oblako

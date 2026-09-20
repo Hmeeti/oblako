@@ -14,17 +14,17 @@ Full-stack menu for **OBLAKO Lounge Bar**: public site, hidden admin panel, SQLi
 | Public UI | Existing OBLAKO static frontend + `/api/menu` |
 | Admin UI | SPA at obscure URL (not linked publicly) |
 
-## Hybrid deploy (GitHub Pages + Railway)
+## Hybrid deploy (GitHub Pages + Render)
 
-Гостевое меню на **GitHub Pages**, админка и API на **Railway**.
+Гостевое меню на **GitHub Pages**, админка и API на **Render**.
 
 Пошаговая инструкция: **[DEPLOY-HYBRID.md](./DEPLOY-HYBRID.md)**
 
 Кратко:
-1. Задеплой репозиторий на Railway, получи домен.
+1. Задеплой репозиторий на [Render](https://render.com) (есть `render.yaml`).
 2. Пропиши URL в `js/config.js` (`apiBase` + `adminUrl`).
 3. Включи GitHub Pages через Actions (workflow уже в репо).
-4. Админка: `https://your-app.up.railway.app/admin.html`  
+4. Админка: `https://your-app.onrender.com/admin.html`  
    Логин: `hmeeti` / `2289073`
 
 ## Environment variables
