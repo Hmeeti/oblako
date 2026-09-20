@@ -25,7 +25,7 @@ Full-stack menu for **OBLAKO Lounge Bar**: public site, hidden admin panel, SQLi
 2. Пропиши URL в `js/config.js` (`apiBase` + `adminUrl`).
 3. Включи GitHub Pages через Actions (workflow уже в репо).
 4. Админка: `https://your-app.onrender.com/admin.html`  
-   Логин: `hmeeti` / `2289073`
+   Логин: `hmeeti` / `9987650`
 
 ## Environment variables
 

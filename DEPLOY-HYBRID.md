@@ -39,18 +39,18 @@
 | `CORS_ORIGINS` | `https://hmeeti.github.io` |
 | `DATABASE_PATH` | `data/oblako.db` |
 
-### `ADMIN_PASSWORD_HASH` для пароля `2289073`
+### `ADMIN_PASSWORD_HASH` для пароля `9987650`
 
 Вставь как есть:
 
 ```
-$2b$12$rG/8mfkPEr.m00YRyVhAVeCNlU3Vt533Rkei9Uy2RB6YYrtgN8aMy
+$2b$12$ZSqP57ac22kXwje7LvOYEub07Dr0iQFlUre2EL7mZzzH7dXwoJ18m
 ```
 
 Или сгенерируй локально:
 
 ```bash
-npm run hash-password -- "2289073"
+npm run hash-password -- "9987650"
 ```
 
 6. Нажми **Deploy**. Дождись статуса **Live**.
@@ -59,7 +59,7 @@ npm run hash-password -- "2289073"
 
 8. Проверь:
    - `https://ТВОЙ-URL/api/health` → `{"ok":true,...}`
-   - `https://ТВОЙ-URL/admin.html` → логин **hmeeti** / **2289073**
+   - `https://ТВОЙ-URL/admin.html` → логин **hmeeti** / **9987650**
 
 > На бесплатном плане Render «засыпает» без трафика ~15 мин. Первый вход после паузы может подождать 30–60 сек.
 
@@ -100,7 +100,7 @@ window.OBLAKO_CONFIG = {
 |---|---|
 | Меню гостей | GitHub Pages |
 | Кнопка «Админка» в футере | ведёт на Render `/admin.html` |
-| Логин | `hmeeti` / `2289073` |
+| Логин | `hmeeti` / `9987650` |
 | Правки цен в админке | видны на Pages через `/api/menu` |
 
 ---

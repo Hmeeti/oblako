@@ -19,7 +19,7 @@ async function ensurePasswordHash() {
   }
 
   // Keep in sync with START.bat default credentials
-  const tempPass = '2289073';
+  const tempPass = '9987650';
   const hash = await bcrypt.hash(tempPass, 12);
   const updated = env.includes('ADMIN_PASSWORD_HASH=')
     ? env.replace(/ADMIN_PASSWORD_HASH=.*/, `ADMIN_PASSWORD_HASH=${hash}`)

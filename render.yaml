@@ -16,9 +16,9 @@ services:
         generateValue: true
       - key: ADMIN_USERNAME
         value: hmeeti
-      # password: 2289073
+      # password: 9987650
       - key: ADMIN_PASSWORD_HASH
-        value: "$2b$12$rG/8mfkPEr.m00YRyVhAVeCNlU3Vt533Rkei9Uy2RB6YYrtgN8aMy"
+        value: "$2b$12$ZSqP57ac22kXwje7LvOYEub07Dr0iQFlUre2EL7mZzzH7dXwoJ18m"
       - key: CORS_ORIGINS
         value: https://hmeeti.github.io
       - key: DATABASE_PATH

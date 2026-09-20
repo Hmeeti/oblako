@@ -8,6 +8,6 @@ start "" "http://localhost:3000/admin.html"
 echo.
 echo Menu:  http://localhost:3000
 echo Admin: http://localhost:3000/admin.html
-echo Login: hmeeti / 2289073
+echo Login: hmeeti / 9987650
 echo.
 pause
