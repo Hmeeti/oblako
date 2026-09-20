@@ -6,5 +6,7 @@ public/image/optimized/
 public/image/uploads/
 image/optimized/
 image/uploads/
+image/*.HEIC
+image/*.heic
 *.log
 .DS_Store

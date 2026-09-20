@@ -522,7 +522,11 @@ main {
 }
 
 /* SECTION */
-.section { margin-bottom: 40px; }
+.section {
+  margin-bottom: 40px;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 720px;
+}
 
 .section-title {
   font-family: var(--display);
@@ -610,6 +614,8 @@ main {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 12px;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 480px;
 }
 
 .grid--list {
@@ -805,6 +811,7 @@ main {
   height: 100%;
   object-fit: cover;
   display: block;
+  background: #141414;
 }
 
 .menu-loading {

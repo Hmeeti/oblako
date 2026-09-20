@@ -90,13 +90,12 @@
       card.appendChild(ripple);
       setTimeout(() => ripple.remove(), 600);
 
+      // Skip bounce when tapping the add-to-cart button
+      if (e.target.closest('[data-add]')) return;
+
       card.classList.remove('card--bounce');
       void card.offsetWidth;
       card.classList.add('card--bounce');
-
-      if (Math.random() > 0.6) {
-        showToast('Скоро появится в меню', 2000);
-      }
     });
   }
 

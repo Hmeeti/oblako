@@ -24,6 +24,14 @@
     return `${Math.round(n).toLocaleString('ru-RU')} ₸`;
   }
 
+  function escapeCart(value) {
+    return String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
   function count() {
     return lines.reduce((s, l) => s + l.qty, 0);
   }
@@ -63,7 +71,7 @@
     save();
     render();
     pulseFab();
-    if (typeof showToast === 'function') showToast(`Добавлено: ${item.name}`, 1800);
+    if (typeof window.showToast === 'function') window.showToast(`Добавлено: ${item.name}`, 1800);
     else toastFallback(`Добавлено: ${item.name}`);
     return true;
   }
@@ -90,9 +98,9 @@
     const el = document.getElementById('toast');
     if (!el) return;
     el.textContent = msg;
-    el.classList.add('show');
+    el.classList.add('toast--show');
     clearTimeout(toastFallback._t);
-    toastFallback._t = setTimeout(() => el.classList.remove('show'), 1800);
+    toastFallback._t = setTimeout(() => el.classList.remove('toast--show'), 1800);
   }
 
   function pulseFab() {
@@ -162,6 +170,10 @@
     document.body.classList.remove('cart-open');
   }
 
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && document.body.classList.contains('cart-open')) close();
+  });
+
   function render() {
     ensureDom();
     const badge = document.getElementById('cart-badge');
@@ -193,12 +205,12 @@
     }
 
     body.innerHTML = lines.map(l => `
-      <article class="cart-line" data-id="${l.id}">
+      <article class="cart-line" data-id="${String(l.id).replace(/"/g, '')}">
         <div class="cart-line__photo">
-          ${l.image ? `<img src="${l.image}" alt="" loading="lazy">` : '<span class="cart-line__ph">OB</span>'}
+          ${l.image ? `<img src="${String(l.image).replace(/"/g, '')}" alt="" loading="lazy" width="96" height="96">` : '<span class="cart-line__ph">OB</span>'}
         </div>
         <div class="cart-line__info">
-          <h3 class="cart-line__name">${l.name}</h3>
+          <h3 class="cart-line__name">${escapeCart(l.name)}</h3>
           <p class="cart-line__price">${money(l.price)}</p>
           <div class="cart-line__qty">
             <button type="button" data-act="dec" aria-label="Меньше">−</button>

@@ -7,13 +7,18 @@
   const dock = document.getElementById('dock');
 
   /* ── SCROLL PROGRESS + COMPACT HEADER ── */
+  let scrollTicking = false;
   window.addEventListener('scroll', () => {
-    const y = window.scrollY;
-    const max = document.documentElement.scrollHeight - window.innerHeight;
-    const pct = max > 0 ? (y / max) * 100 : 0;
-
-    if (progress) progress.style.width = `${pct}%`;
-    header?.classList.toggle('header--compact', y > 70);
+    if (scrollTicking) return;
+    scrollTicking = true;
+    requestAnimationFrame(() => {
+      const y = window.scrollY;
+      const max = document.documentElement.scrollHeight - window.innerHeight;
+      const pct = max > 0 ? (y / max) * 100 : 0;
+      if (progress) progress.style.width = `${pct}%`;
+      header?.classList.toggle('header--compact', y > 70);
+      scrollTicking = false;
+    });
   }, { passive: true });
 
   /* ── GREETING + CLOCK ── */
@@ -39,12 +44,15 @@
   setInterval(updateClock, 30000);
 
   /* ── WELCOME TOAST ── */
-  function showToast(msg) {
+  let toastTimer = null;
+  function showToast(msg, duration = 3200) {
     if (!toast) return;
     toast.textContent = msg;
     toast.classList.add('toast--show');
-    setTimeout(() => toast.classList.remove('toast--show'), 3200);
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove('toast--show'), duration);
   }
+  window.showToast = showToast;
 
   const hasSplash = document.getElementById('splash');
   const splashDelay = hasSplash ? 3200 : 800;
