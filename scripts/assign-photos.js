@@ -45,7 +45,7 @@ const CURATED = {
   'IMG_4524.jpg': 's2',  // Том-ям
 
   // Shashlik / meat boards
-  'IMG_2765.jpg': 'sh0', // Баранина (каре/чопсы)
+  'IMG_2765.jpg': 'hm6', // Говяжьи рёбра от шефа
 };
 
 const foodCats = new Set([
