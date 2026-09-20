@@ -16,10 +16,11 @@ services:
         generateValue: true
       - key: ADMIN_USERNAME
         value: hmeeti
+      # password: 2289073
       - key: ADMIN_PASSWORD_HASH
-        sync: false
+        value: "$2b$12$rG/8mfkPEr.m00YRyVhAVeCNlU3Vt533Rkei9Uy2RB6YYrtgN8aMy"
       - key: CORS_ORIGINS
-        sync: false
+        value: https://hmeeti.github.io
       - key: DATABASE_PATH
         value: data/oblako.db
       - key: ADMIN_PATH
