@@ -112,7 +112,7 @@ function assign(file, itemId, method, confidence) {
   if (!photoSet.has(file) || !byId.has(itemId)) return false;
   if (usedItems.has(itemId) || usedPhotos.has(file)) return false;
 
-  const pub = `/image/dishes/${itemId}.jpg`;
+  const pub = `image/dishes/${itemId}.jpg`;
   const src = path.join(optDir, file);
   const dest = path.join(dishesDir, `${itemId}.jpg`);
   fs.copyFileSync(src, dest);

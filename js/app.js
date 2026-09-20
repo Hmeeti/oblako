@@ -428,6 +428,13 @@ function applyApiMenu(data) {
   MENU.length = 0;
   data.items.forEach(item => MENU.push(item));
 
+  // Keep local photo map (static hosting / GitHub Pages) even after API refresh
+  if (typeof IMAGE_MAP !== 'undefined') {
+    MENU.forEach(item => {
+      if (IMAGE_MAP[item.id]) item.image = IMAGE_MAP[item.id];
+    });
+  }
+
   if (data.categories?.length) {
     CATEGORY_ORDER.length = 0;
     data.categories.forEach(c => CATEGORY_ORDER.push(c));
