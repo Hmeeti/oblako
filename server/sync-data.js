@@ -6,6 +6,7 @@ const {
   scheduleGithubSync,
   cfg: githubCfg,
 } = require('./github-sync');
+const { hydrateMissingImages, normalizeDishPath } = require('./hydrate-images');
 
 function escapeStr(s) {
   return String(s ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
@@ -23,13 +24,18 @@ function loadMenuRows() {
   return { categories, items };
 }
 
+function prepareImagePath(imagePath, { forGithub = false } = {}) {
+  if (!imagePath) return '';
+  let image = normalizeDishPath(imagePath);
+  if (forGithub) image = absolutizeImagePath(image, githubCfg().publicBase) || '';
+  return image;
+}
+
 function buildDataJs(categories, items, { forGithub = false } = {}) {
-  const publicBase = githubCfg().publicBase;
   const catList = categories.map(c => `  '${escapeStr(c.name)}'`).join(',\n');
 
   const itemBlocks = items.map(item => {
-    let image = item.image_path || '';
-    if (forGithub) image = absolutizeImagePath(image, publicBase) || '';
+    const image = prepareImagePath(item.image_path, { forGithub });
 
     const parts = [
       `id: '${escapeStr(item.id)}'`,
@@ -51,11 +57,9 @@ function buildDataJs(categories, items, { forGithub = false } = {}) {
 }
 
 function buildImageMapJs(items, { forGithub = false } = {}) {
-  const publicBase = githubCfg().publicBase;
   const withImages = items.filter(i => i.image_path);
   const mapLines = withImages.map(r => {
-    let image = r.image_path;
-    if (forGithub) image = absolutizeImagePath(image, publicBase);
+    const image = prepareImagePath(r.image_path, { forGithub });
     return `  ${JSON.stringify(r.id)}: ${JSON.stringify(image)}`;
   }).join(',\n');
 
@@ -71,11 +75,18 @@ function writeLocalFiles(categories, items) {
 }
 
 function syncMenuToDataJs() {
+  // Always restore missing image_path from image/dishes + image-map before rewriting files
+  const hydrated = hydrateMissingImages();
+  if (hydrated.restored) {
+    console.log(`[sync] restored ${hydrated.restored} missing dish photos from disk/map`);
+  }
+
   const { categories, items } = loadMenuRows();
   writeLocalFiles(categories, items);
 
   // Queue GitHub Pages update (debounced)
   scheduleGithubSync(() => {
+    hydrateMissingImages();
     const latest = loadMenuRows();
     return {
       message: `chore(menu): sync from admin (${latest.items.length} items)`,
@@ -92,7 +103,12 @@ function syncMenuToDataJs() {
     };
   });
 
-  return { categories: categories.length, items: items.length };
+  return {
+    categories: categories.length,
+    items: items.length,
+    withImages: items.filter(i => i.image_path).length,
+    restored: hydrated.restored,
+  };
 }
 
 module.exports = {
@@ -100,4 +116,5 @@ module.exports = {
   buildDataJs,
   buildImageMapJs,
   loadMenuRows,
+  hydrateMissingImages,
 };

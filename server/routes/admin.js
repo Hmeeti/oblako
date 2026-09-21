@@ -295,10 +295,13 @@ router.post('/items/:id/image-url', requireAuth, express.json(), (req, res) => {
   let url = String(req.body?.url || '').trim();
   if (!url) return res.status(400).json({ error: 'URL required' });
 
-  // Allow relative paths like /image/... and absolute http(s) URLs
-  if (!url.startsWith('/') && !/^https?:\/\//i.test(url)) {
-    return res.status(400).json({ error: 'Нужна ссылка http(s):// или путь /image/...' });
+  // Allow relative paths like image/dishes/... or /image/..., and http(s) URLs
+  if (!url.startsWith('/') && !url.startsWith('image/') && !/^https?:\/\//i.test(url)) {
+    return res.status(400).json({ error: 'Нужна ссылка http(s):// или путь image/... / /image/...' });
   }
+
+  // Prefer relative dish paths for GitHub Pages static hosting
+  if (/^\/image\/dishes\//i.test(url)) url = url.slice(1);
 
   db.prepare(`
     UPDATE menu_items SET image_path = ?, image_source = 'url', match_confidence = 1, updated_at = datetime('now')

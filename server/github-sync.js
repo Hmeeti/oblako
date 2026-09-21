@@ -72,12 +72,14 @@ async function putFile({ repo, branch, token, filePath, content, message, binary
 
 /**
  * Rewrite local upload paths to absolute Render URLs so GitHub Pages can load them.
- * Keep relative image/dishes/* for static hosting.
+ * Keep relative image/dishes/* for static hosting (strip a leading slash if present).
  */
 function absolutizeImagePath(imagePath, publicBase) {
   if (!imagePath) return imagePath;
   const s = String(imagePath);
   if (/^https?:\/\//i.test(s)) return s;
+  // Dish photos ship with the static site — never point them at Render
+  if (/^\/?image\/dishes\//i.test(s)) return s.replace(/^\//, '');
   if (s.startsWith('/image/uploads/') && publicBase) return `${publicBase}${s}`;
   if (s.startsWith('image/uploads/') && publicBase) return `${publicBase}/${s}`;
   return s;
