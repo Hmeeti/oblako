@@ -291,6 +291,10 @@
               ? `✅ Автопуш включён → <code>${esc(gh.repo)}</code> / <code>${esc(gh.branch)}</code>. После сохранения меню уходит в GitHub (~1 мин на обновление Pages).`
               : '⚠️ Нет <code>GITHUB_TOKEN</code> на Render — правки остаются только на сервере админки. Добавь токен в Environment, иначе гости на GitHub Pages видят старое меню.'}
           </p>
+          <p class="panel__hint">
+            Если у блюд пропали фото — открой раздел <strong>Фото</strong> и нажми
+            <strong>Восстановить фото блюд</strong> (или подожди редеплой — сервер восстановит сам).
+          </p>
         </div>
         <div class="panel">
           <div class="panel__head"><h3 class="panel__title">Последние действия</h3></div>
@@ -445,7 +449,7 @@
           <div class="full photo-box">
             <div class="photo-box__head">
               <span class="photo-box__title">Фото блюда</span>
-              ${item.image ? '<span class="badge badge--ok">Есть фото</span>' : '<span class="badge">Нет фото</span>'}
+              ${item.image || item.id ? '<span class="badge badge--ok">Есть фото</span>' : '<span class="badge">Нет фото</span>'}
             </div>
 
             <div class="photo-box__preview" id="photo-preview-wrap">
