@@ -11,6 +11,8 @@ const { initDb, logActivity, db } = require('./db');
 const { getAdminConfig, verifyLogin } = require('./auth');
 const publicRoutes = require('./routes/public');
 const adminRoutes = require('./routes/admin');
+const { hydrateMissingImages } = require('./hydrate-images');
+const { syncMenuToDataJs } = require('./sync-data');
 
 function ensureSeeded() {
   try {
@@ -24,7 +26,20 @@ function ensureSeeded() {
   }
 }
 
+function ensureImagesHydrated() {
+  try {
+    const { restored, known } = hydrateMissingImages();
+    if (restored > 0) {
+      console.log(`[boot] Restored ${restored} dish photos from image/dishes (map knows ${known})`);
+      syncMenuToDataJs();
+    }
+  } catch (err) {
+    console.warn('[boot] image hydrate skipped:', err.message);
+  }
+}
+
 ensureSeeded();
+ensureImagesHydrated();
 
 const app = express();
 const { adminPath } = getAdminConfig();

@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 const { initDb, db } = require('../server/db');
+const { hydrateMissingImages, discoverDishImages, loadImageMapFile } = require('../server/hydrate-images');
 
 initDb();
 
@@ -12,7 +13,9 @@ const { MENU, CATEGORY_ORDER } = vm.runInNewContext(code);
 
 const existing = db.prepare('SELECT COUNT(*) AS c FROM menu_items').get().c;
 if (existing > 0) {
+  const { restored } = hydrateMissingImages();
   console.log(`Database already has ${existing} items. Skipping seed.`);
+  if (restored) console.log(`Restored ${restored} missing dish photo paths.`);
   console.log('To re-seed, delete data/oblako.db and run again.');
   process.exit(0);
 }
@@ -26,17 +29,22 @@ CATEGORY_ORDER.forEach((name, idx) => {
   catMap[name] = getCat.get(name).id;
 });
 
+const imageSources = { ...discoverDishImages(), ...loadImageMapFile() };
+
 const insertItem = db.prepare(`
   INSERT INTO menu_items (
     id, category_id, subcat, name, description, price, price2,
-    price_label, price2_label, volume, sort_order
-  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    price_label, price2_label, volume, image_path, image_source, sort_order
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `);
 
 let orderByCat = {};
+let withImages = 0;
 MENU.forEach(item => {
   if (!orderByCat[item.cat]) orderByCat[item.cat] = 0;
   const sortOrder = orderByCat[item.cat]++;
+  const imagePath = item.image || imageSources[item.id] || null;
+  if (imagePath) withImages++;
 
   insertItem.run(
     item.id,
@@ -49,8 +57,10 @@ MENU.forEach(item => {
     item.priceLabel || null,
     item.price2Label || null,
     item.volume || null,
+    imagePath,
+    imagePath ? 'static' : null,
     sortOrder
   );
 });
 
-console.log(`Seeded ${MENU.length} menu items in ${CATEGORY_ORDER.length} categories.`);
+console.log(`Seeded ${MENU.length} menu items in ${CATEGORY_ORDER.length} categories (${withImages} with photos).`);
