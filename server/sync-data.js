@@ -6,6 +6,7 @@ const {
   scheduleGithubSync,
   cfg: githubCfg,
 } = require('./github-sync');
+const { buildMergedImageMap, backfillMissingImages } = require('./images');
 
 function escapeStr(s) {
   return String(s ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
@@ -23,13 +24,18 @@ function loadMenuRows() {
   return { categories, items };
 }
 
+function imageForItem(item, mergedMap, { forGithub = false } = {}) {
+  let image = item.image_path || mergedMap[item.id] || '';
+  if (forGithub) image = absolutizeImagePath(image, githubCfg().publicBase) || image;
+  return image;
+}
+
 function buildDataJs(categories, items, { forGithub = false } = {}) {
-  const publicBase = githubCfg().publicBase;
+  const mergedMap = buildMergedImageMap(items);
   const catList = categories.map(c => `  '${escapeStr(c.name)}'`).join(',\n');
 
   const itemBlocks = items.map(item => {
-    let image = item.image_path || '';
-    if (forGithub) image = absolutizeImagePath(image, publicBase) || '';
+    const image = imageForItem(item, mergedMap, { forGithub });
 
     const parts = [
       `id: '${escapeStr(item.id)}'`,
@@ -52,14 +58,17 @@ function buildDataJs(categories, items, { forGithub = false } = {}) {
 
 function buildImageMapJs(items, { forGithub = false } = {}) {
   const publicBase = githubCfg().publicBase;
-  const withImages = items.filter(i => i.image_path);
-  const mapLines = withImages.map(r => {
-    let image = r.image_path;
-    if (forGithub) image = absolutizeImagePath(image, publicBase);
-    return `  ${JSON.stringify(r.id)}: ${JSON.stringify(image)}`;
-  }).join(',\n');
+  const merged = buildMergedImageMap(items);
+  const mapLines = Object.keys(merged)
+    .sort()
+    .map(id => {
+      let image = merged[id];
+      if (forGithub) image = absolutizeImagePath(image, publicBase) || image;
+      return `  ${JSON.stringify(id)}: ${JSON.stringify(image)}`;
+    })
+    .join(',\n');
 
-  return `/* Auto-synced from admin */\nconst IMAGE_MAP = {\n${mapLines}\n};\n\nif (typeof MENU !== 'undefined') {\n  MENU.forEach(item => {\n    if (!item.image && IMAGE_MAP[item.id]) item.image = IMAGE_MAP[item.id];\n  });\n}\n`;
+  return `/* Auto-synced from admin — merged with dish photos */\nconst IMAGE_MAP = {\n${mapLines}\n};\n\nif (typeof MENU !== 'undefined') {\n  MENU.forEach(item => {\n    if (!item.image && IMAGE_MAP[item.id]) item.image = IMAGE_MAP[item.id];\n  });\n}\n`;
 }
 
 function writeLocalFiles(categories, items) {
@@ -70,27 +79,32 @@ function writeLocalFiles(categories, items) {
   return { dataJs, mapJs };
 }
 
-function syncMenuToDataJs() {
+function syncMenuToDataJs({ pushGithub = true } = {}) {
+  // Always repair missing dish photos before exporting
+  backfillMissingImages();
+
   const { categories, items } = loadMenuRows();
   writeLocalFiles(categories, items);
 
-  // Queue GitHub Pages update (debounced)
-  scheduleGithubSync(() => {
-    const latest = loadMenuRows();
-    return {
-      message: `chore(menu): sync from admin (${latest.items.length} items)`,
-      files: [
-        {
-          path: 'js/data.js',
-          content: buildDataJs(latest.categories, latest.items, { forGithub: true }),
-        },
-        {
-          path: 'js/image-map.js',
-          content: buildImageMapJs(latest.items, { forGithub: true }),
-        },
-      ],
-    };
-  });
+  if (pushGithub) {
+    scheduleGithubSync(() => {
+      backfillMissingImages();
+      const latest = loadMenuRows();
+      return {
+        message: `chore(menu): sync from admin (${latest.items.length} items)`,
+        files: [
+          {
+            path: 'js/data.js',
+            content: buildDataJs(latest.categories, latest.items, { forGithub: true }),
+          },
+          {
+            path: 'js/image-map.js',
+            content: buildImageMapJs(latest.items, { forGithub: true }),
+          },
+        ],
+      };
+    });
+  }
 
   return { categories: categories.length, items: items.length };
 }

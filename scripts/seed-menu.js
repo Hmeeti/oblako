@@ -10,6 +10,12 @@ const dataPath = path.join(process.cwd(), 'js', 'data.js');
 const code = fs.readFileSync(dataPath, 'utf8') + '\n;({ MENU, CATEGORY_ORDER });';
 const { MENU, CATEGORY_ORDER } = vm.runInNewContext(code);
 
+let IMAGE_MAP = {};
+try {
+  const mapCode = fs.readFileSync(path.join(process.cwd(), 'js', 'image-map.js'), 'utf8') + '\n; IMAGE_MAP;';
+  IMAGE_MAP = vm.runInNewContext(mapCode, {}) || {};
+} catch (_) { /* optional */ }
+
 const existing = db.prepare('SELECT COUNT(*) AS c FROM menu_items').get().c;
 if (existing > 0) {
   console.log(`Database already has ${existing} items. Skipping seed.`);
@@ -29,14 +35,26 @@ CATEGORY_ORDER.forEach((name, idx) => {
 const insertItem = db.prepare(`
   INSERT INTO menu_items (
     id, category_id, subcat, name, description, price, price2,
-    price_label, price2_label, volume, sort_order
-  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    price_label, price2_label, volume, image_path, image_source, match_confidence, sort_order
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `);
 
 let orderByCat = {};
+let withImages = 0;
 MENU.forEach(item => {
   if (!orderByCat[item.cat]) orderByCat[item.cat] = 0;
   const sortOrder = orderByCat[item.cat]++;
+
+  let image = item.image || IMAGE_MAP[item.id] || null;
+  let imageSource = image ? (item.image ? 'seed' : 'image-map') : null;
+  if (!image) {
+    const dish = path.join(process.cwd(), 'image', 'dishes', `${item.id}.jpg`);
+    if (fs.existsSync(dish)) {
+      image = `image/dishes/${item.id}.jpg`;
+      imageSource = 'dishes';
+    }
+  }
+  if (image) withImages++;
 
   insertItem.run(
     item.id,
@@ -49,8 +67,11 @@ MENU.forEach(item => {
     item.priceLabel || null,
     item.price2Label || null,
     item.volume || null,
+    image,
+    imageSource,
+    image ? 1 : null,
     sortOrder
   );
 });
 
-console.log(`Seeded ${MENU.length} menu items in ${CATEGORY_ORDER.length} categories.`);
+console.log(`Seeded ${MENU.length} menu items in ${CATEGORY_ORDER.length} categories (${withImages} with photos).`);

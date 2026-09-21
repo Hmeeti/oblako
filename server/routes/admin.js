@@ -13,6 +13,7 @@ const {
 const { requireAuth } = require('../auth');
 const { syncMenuToDataJs } = require('../sync-data');
 const { pushBinaryFile, cfg: githubCfg } = require('../github-sync');
+const { backfillMissingImages } = require('../images');
 
 const router = express.Router();
 
@@ -24,6 +25,16 @@ function syncPublicMenu() {
     return null;
   }
 }
+
+router.post('/repair-images', requireAuth, (_req, res) => {
+  const result = backfillMissingImages();
+  syncPublicMenu();
+  const withImages = db.prepare(`
+    SELECT COUNT(*) AS c FROM menu_items
+    WHERE active = 1 AND image_path IS NOT NULL AND image_path != ''
+  `).get().c;
+  res.json({ ok: true, ...result, withImages });
+});
 
 const uploadDir = path.join(process.cwd(), 'image', 'uploads');
 fs.mkdirSync(uploadDir, { recursive: true });

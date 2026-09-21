@@ -9,6 +9,8 @@ const { execSync } = require('child_process');
 
 const { initDb, logActivity, db } = require('./db');
 const { getAdminConfig, verifyLogin } = require('./auth');
+const { backfillMissingImages } = require('./images');
+const { syncMenuToDataJs } = require('./sync-data');
 const publicRoutes = require('./routes/public');
 const adminRoutes = require('./routes/admin');
 
@@ -16,11 +18,24 @@ function ensureSeeded() {
   try {
     initDb();
     const count = db.prepare('SELECT COUNT(*) AS c FROM menu_items').get().c;
-    if (count > 0) return;
-    console.log('[boot] Empty database — seeding from js/data.js …');
-    execSync('node scripts/seed-menu.js', { stdio: 'inherit' });
+    if (count === 0) {
+      console.log('[boot] Empty database — seeding from js/data.js …');
+      execSync('node scripts/seed-menu.js', { stdio: 'inherit' });
+    }
+
+    const filled = backfillMissingImages();
+    if (filled.filled > 0) {
+      console.log(`[boot] Restored ${filled.filled} dish photos into database`);
+      try {
+        syncMenuToDataJs({ pushGithub: true });
+      } catch (err) {
+        console.warn('[boot] sync after backfill:', err.message);
+      }
+    } else {
+      console.log(`[boot] Photo check: ${filled.checked} missing, nothing to restore`);
+    }
   } catch (err) {
-    console.warn('[boot] seed skipped:', err.message);
+    console.warn('[boot] seed/backfill skipped:', err.message);
   }
 }
 

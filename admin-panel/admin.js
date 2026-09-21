@@ -346,7 +346,12 @@
           <tbody>
             ${filtered.map(i => `
               <tr>
-                <td>${i.image ? `<img class="thumb" src="${esc(i.image)}" alt="" loading="lazy">` : '<span class="badge">нет фото</span>'}</td>
+                <td>${(() => {
+                  const src = mediaUrl(i.image, i.id);
+                  return src
+                    ? `<img class="thumb" src="${esc(src)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'badge',textContent:'нет фото'}))">`
+                    : '<span class="badge">нет фото</span>';
+                })()}</td>
                 <td>
                   <strong>${esc(i.name)}</strong>
                   ${i.desc ? `<br><small style="color:var(--muted)">${esc(i.desc.slice(0, 70))}${i.desc.length > 70 ? '…' : ''}</small>` : ''}
@@ -444,9 +449,12 @@
             </div>
 
             <div class="photo-box__preview" id="photo-preview-wrap">
-              ${item.image
-                ? `<img class="photo-box__img" id="photo-preview" src="${esc(item.image)}" alt="">`
-                : `<div class="photo-box__placeholder" id="photo-preview">☁️<br><small>Превью появится здесь</small></div>`}
+              ${(() => {
+                const src = mediaUrl(item.image, item.id);
+                return src
+                  ? `<img class="photo-box__img" id="photo-preview" src="${esc(src)}" alt="" onerror="this.outerHTML='<div class=\\'photo-box__placeholder\\' id=\\'photo-preview\\'>☁️<br><small>Превью появится здесь</small></div>'">`
+                  : `<div class="photo-box__placeholder" id="photo-preview">☁️<br><small>Превью появится здесь</small></div>`;
+              })()}
             </div>
 
             <div class="photo-box__url">
@@ -782,11 +790,15 @@
         <div class="panel">
           <div class="panel__head">
             <h3 class="panel__title">Фото в меню</h3>
-            <span class="badge badge--ok">${withPhoto} / ${items.length} с фото</span>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              <span class="badge badge--ok">${withPhoto} / ${items.length} с фото</span>
+              <button type="button" class="btn btn--gold btn--sm" id="repair-images-btn">Восстановить фото блюд</button>
+            </div>
           </div>
           <p class="panel__hint">
-            Лучше назначать фото вручную в разделе «Блюда» → Изменить → загрузить файл.
-            Авто-сопоставление из папки <code>image/</code>: команда <code>npm run match-images</code>.
+            Если в списке блюд «нет фото», нажми <strong>Восстановить фото блюд</strong> —
+            подтянутся картинки из <code>image/dishes/</code> и уйдут в GitHub.
+            Новые загрузки — в «Блюда» → Изменить.
           </p>
           <div class="table-wrap"><table>
             <thead><tr><th>Файл</th><th>Блюдо</th><th>Уверенность</th><th>Метод</th><th>Дата</th></tr></thead>
@@ -801,6 +813,22 @@
             </tbody>
           </table></div>
         </div>`;
+
+      document.getElementById('repair-images-btn')?.addEventListener('click', async () => {
+        const btn = document.getElementById('repair-images-btn');
+        btn.disabled = true;
+        btn.textContent = 'Восстанавливаем…';
+        try {
+          const r = await api('/repair-images', { method: 'POST' });
+          await loadData();
+          toast(`Готово: восстановлено ${r.filled}, с фото ${r.withImages}`);
+          renderImages();
+        } catch (err) {
+          toast(err.message, false);
+          btn.disabled = false;
+          btn.textContent = 'Восстановить фото блюд';
+        }
+      });
     });
   }
 
@@ -844,6 +872,15 @@
   function esc(s) {
     return String(s ?? '').replace(/[&<>"']/g, c =>
       ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  function mediaUrl(src, itemId) {
+    let s = String(src || '').trim();
+    if (!s && itemId) s = `image/dishes/${itemId}.jpg`;
+    if (!s) return '';
+    if (/^https?:\/\//i.test(s) || s.startsWith('data:')) return s;
+    if (s.startsWith('/')) return s;
+    return `/${s.replace(/^\.\//, '')}`;
   }
 
   function debounce(fn, ms) {
