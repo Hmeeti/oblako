@@ -240,20 +240,28 @@
     `;
   }
 
+  const BAR_CATS = new Set(['Кофе и чай', 'Безалкогольные', 'Алкогольные']);
+
+  function isBarItem(item) {
+    return BAR_CATS.has(item?.cat);
+  }
+
   function buildCard(item) {
     const card = document.createElement('article');
-    card.className = 'card card--filled';
+    const bar = isBarItem(item);
+    card.className = bar ? 'card card--filled card--bar' : 'card card--filled';
     card.dataset.id = item.id || '';
 
     const idx = cardIndex++;
-    const eager = idx < 4 && !searchQuery;
-    const photoInner = item.image
-      ? `<img src="${escapeHtml(item.image)}" alt="${escapeHtml(item.name)}" class="card-photo__img" width="720" height="720" decoding="async" loading="${eager ? 'eager' : 'lazy'}"${eager ? ' fetchpriority="high"' : ''} sizes="(max-width: 640px) 46vw, 240px">`
+    const eager = !bar && idx < 4 && !searchQuery;
+    const showPhoto = !bar && item.image;
+    const photoBlock = showPhoto
+      ? `<div class="card-photo"><img src="${escapeHtml(item.image)}" alt="${escapeHtml(item.name)}" class="card-photo__img" width="720" height="720" decoding="async" loading="${eager ? 'eager' : 'lazy'}"${eager ? ' fetchpriority="high"' : ''} sizes="(max-width: 640px) 46vw, 240px"></div>`
       : '';
 
     const canAdd = item.price != null;
     card.innerHTML = `
-      <div class="card-photo">${photoInner}</div>
+      ${photoBlock}
       <div class="card-body">
         <h3 class="card-title">${escapeHtml(item.name)}</h3>
         ${item.desc ? `<p class="card-desc">${escapeHtml(item.desc)}</p>` : ''}
