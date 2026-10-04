@@ -6,6 +6,7 @@ public/image/optimized/
 public/image/uploads/
 image/optimized/
 image/uploads/
+image/originals/
 image/*.HEIC
 image/*.heic
 *.log
