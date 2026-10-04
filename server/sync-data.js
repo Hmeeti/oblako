@@ -76,6 +76,15 @@ function writeLocalFiles(categories, items) {
   const mapJs = buildImageMapJs(items, { forGithub: false });
   fs.writeFileSync(path.join(process.cwd(), 'js', 'data.js'), dataJs, 'utf8');
   fs.writeFileSync(path.join(process.cwd(), 'js', 'image-map.js'), mapJs, 'utf8');
+  try {
+    // Keep menu.json in sync for GitHub Pages / SW
+    require('child_process').execFileSync('node', ['scripts/build-menu-json.js'], {
+      cwd: process.cwd(),
+      stdio: 'ignore',
+    });
+  } catch (err) {
+    console.warn('[sync] menu.json:', err.message);
+  }
   return { dataJs, mapJs };
 }
 
@@ -90,18 +99,25 @@ function syncMenuToDataJs({ pushGithub = true } = {}) {
     scheduleGithubSync(() => {
       backfillMissingImages();
       const latest = loadMenuRows();
+      const files = [
+        {
+          path: 'js/data.js',
+          content: buildDataJs(latest.categories, latest.items, { forGithub: true }),
+        },
+        {
+          path: 'js/image-map.js',
+          content: buildImageMapJs(latest.items, { forGithub: true }),
+        },
+      ];
+      try {
+        const menuPath = path.join(process.cwd(), 'data', 'menu.json');
+        if (fs.existsSync(menuPath)) {
+          files.push({ path: 'data/menu.json', content: fs.readFileSync(menuPath, 'utf8') });
+        }
+      } catch (_) { /* ignore */ }
       return {
         message: `chore(menu): sync from admin (${latest.items.length} items)`,
-        files: [
-          {
-            path: 'js/data.js',
-            content: buildDataJs(latest.categories, latest.items, { forGithub: true }),
-          },
-          {
-            path: 'js/image-map.js',
-            content: buildImageMapJs(latest.items, { forGithub: true }),
-          },
-        ],
+        files,
       };
     });
   }

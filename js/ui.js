@@ -56,7 +56,16 @@
 
   const hasSplash = document.getElementById('splash');
   const splashDelay = hasSplash ? 3200 : 800;
-  setTimeout(() => showToast('Добро пожаловать в OBLAKO'), splashDelay);
+  try {
+    if (!localStorage.getItem('oblako-welcome-seen')) {
+      setTimeout(() => {
+        showToast('Добро пожаловать в OBLAKO');
+        localStorage.setItem('oblako-welcome-seen', '1');
+      }, splashDelay);
+    }
+  } catch (_) {
+    setTimeout(() => showToast('Добро пожаловать в OBLAKO'), splashDelay);
+  }
 
   /* ── DOCK ── */
   if (dock) {

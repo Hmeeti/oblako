@@ -1,0 +1,32 @@
+{
+  "name": "OBLAKO — Меню",
+  "short_name": "OBLAKO",
+  "description": "Электронное меню лаундж-бара OBLAKO",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0d0d0d",
+  "theme_color": "#0d0d0d",
+  "lang": "ru",
+  "icons": [
+    {
+      "src": "image/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "image/favicon.png",
+      "sizes": "32x32",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "image/logo.webp",
+      "sizes": "360x360",
+      "type": "image/webp",
+      "purpose": "any maskable"
+    }
+  ]
+}

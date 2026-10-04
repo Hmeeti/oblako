@@ -52,30 +52,6 @@
     return (typeof MENU !== 'undefined' ? MENU : []).find(i => i.id === id || i.uid === id);
   }
 
-  function add(itemOrId, qty = 1) {
-    const item = typeof itemOrId === 'string' ? findMenuItem(itemOrId) : itemOrId;
-    if (!item || item.price == null) return false;
-
-    const existing = lines.find(l => l.id === item.id);
-    if (existing) {
-      existing.qty += qty;
-    } else {
-      lines.push({
-        id: item.id,
-        name: item.name,
-        price: item.price,
-        image: item.image || '',
-        qty: Math.max(1, qty),
-      });
-    }
-    save();
-    render();
-    pulseFab();
-    if (typeof window.showToast === 'function') window.showToast(`Добавлено: ${item.name}`, 1800);
-    else toastFallback(`Добавлено: ${item.name}`);
-    return true;
-  }
-
   function setQty(id, qty) {
     const line = lines.find(l => l.id === id);
     if (!line) return;
@@ -86,12 +62,50 @@
     }
     save();
     render();
+    notify();
+  }
+
+  function qty(id) {
+    return lines.find(l => l.id === id)?.qty || 0;
+  }
+
+  function notify() {
+    window.dispatchEvent(new CustomEvent('oblako-cart-change'));
+  }
+
+  function add(itemOrId, qtyAdd = 1) {
+    const item = typeof itemOrId === 'string' ? findMenuItem(itemOrId) : itemOrId;
+    if (!item || item.price == null) return false;
+
+    const existing = lines.find(l => l.id === item.id);
+    if (existing) {
+      existing.qty += qtyAdd;
+    } else {
+      lines.push({
+        id: item.id,
+        name: item.name,
+        price: item.price,
+        image: item.image || item.imageFull || '',
+        qty: Math.max(1, qtyAdd),
+      });
+    }
+    save();
+    render();
+    pulseFab();
+    notify();
+    try {
+      if (navigator.vibrate) navigator.vibrate(12);
+    } catch (_) { /* ignore */ }
+    if (typeof window.showToast === 'function') window.showToast(`Добавлено: ${item.name}`, 1800);
+    else toastFallback(`Добавлено: ${item.name}`);
+    return true;
   }
 
   function clear() {
     lines = [];
     save();
     render();
+    notify();
   }
 
   function toastFallback(msg) {
@@ -186,6 +200,22 @@
       badge.textContent = String(n);
     }
 
+    // Dock cart badge
+    const dockCart = document.querySelector('.dock__btn[data-action="cart"]');
+    if (dockCart) {
+      let dockBadge = dockCart.querySelector('.dock__badge');
+      if (n > 0) {
+        if (!dockBadge) {
+          dockBadge = document.createElement('span');
+          dockBadge.className = 'dock__badge';
+          dockCart.appendChild(dockBadge);
+        }
+        dockBadge.textContent = String(n);
+      } else if (dockBadge) {
+        dockBadge.remove();
+      }
+    }
+
     if (!body || !foot) return;
 
     if (!lines.length) {
@@ -262,7 +292,7 @@
   }
 
   // Public API
-  window.OBLAKO_CART = { add, open, close, clear, render, count, total, SERVICE_RATE };
+  window.OBLAKO_CART = { add, open, close, clear, render, count, total, qty, setQty, SERVICE_RATE };
   if (!window.OBLAKO) window.OBLAKO = {};
   window.OBLAKO.openCart = open;
   window.OBLAKO.addToCart = add;
