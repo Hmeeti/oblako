@@ -150,7 +150,19 @@
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', function () {
-        navigator.serviceWorker.register('./sw.js').catch(function () {});
+        navigator.serviceWorker.register('./sw.js').then(function (reg) {
+          if (reg.update) reg.update();
+        }).catch(function () {});
+        // Drop stale image caches from older SW versions once
+        if (!localStorage.getItem('oblako-sw-images-v4')) {
+          caches.keys().then(function (keys) {
+            return Promise.all(keys.filter(function (k) {
+              return /oblako-images-v[123]$/.test(k) || k === 'oblako-static-v3';
+            }).map(function (k) { return caches.delete(k); }));
+          }).then(function () {
+            localStorage.setItem('oblako-sw-images-v4', '1');
+          }).catch(function () {});
+        }
       });
     }
   </script>

@@ -1,6 +1,6 @@
-/* Service Worker — cache-first images, SWR for menu.json */
-const CACHE_STATIC = 'oblako-static-v3';
-const CACHE_IMAGES = 'oblako-images-v3';
+/* Service Worker — SWR for menu/app, images revalidate */
+const CACHE_STATIC = 'oblako-static-v4';
+const CACHE_IMAGES = 'oblako-images-v4';
 
 const PRECACHE = [
   './',
@@ -68,14 +68,16 @@ self.addEventListener('fetch', (event) => {
     event.respondWith((async () => {
       const cache = await caches.open(CACHE_IMAGES);
       const cached = await cache.match(req);
-      if (cached) return cached;
-      try {
-        const res = await fetch(req);
+      const networkPromise = fetch(req).then(res => {
         if (res.ok) cache.put(req, res.clone());
         return res;
-      } catch {
-        return cached || Response.error();
-      }
+      }).catch(() => cached);
+      // Prefer fresh photo when online; fall back to cache offline
+      try {
+        const fresh = await networkPromise;
+        if (fresh) return fresh;
+      } catch (_) { /* ignore */ }
+      return cached || Response.error();
     })());
     return;
   }

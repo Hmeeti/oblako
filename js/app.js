@@ -4,6 +4,8 @@
   const BAR_CATS = new Set(['Кофе и чай', 'Безалкогольные', 'Алкогольные']);
   const CACHE_KEY = 'oblako-menu-cache-v1';
   const RULES_SEEN_KEY = 'oblako-rules-seen';
+  // Bump when dish photos change so browsers/SW drop stale files
+  const PHOTO_VER = '20261005a';
 
   let activeCategory = 'Все';
   let searchQuery = '';
@@ -36,15 +38,23 @@
     return `${apiBase()}${path}`;
   }
 
+  function withPhotoVer(url) {
+    if (!url) return '';
+    const s = String(url);
+    if (/^data:/i.test(s)) return s;
+    const join = s.includes('?') ? '&' : '?';
+    return `${s}${join}v=${PHOTO_VER}`;
+  }
+
   function resolveImageUrl(src) {
     if (!src) return '';
     const s = String(src);
-    if (/^https?:\/\//i.test(s) || s.startsWith('data:')) return s;
+    if (/^https?:\/\//i.test(s) || s.startsWith('data:')) return withPhotoVer(s);
     if (s.startsWith('/')) {
       const base = apiBase();
-      return base ? `${base}${s}` : s;
+      return withPhotoVer(base ? `${base}${s}` : s);
     }
-    return s;
+    return withPhotoVer(s);
   }
 
   function dishWebp(item, size) {
