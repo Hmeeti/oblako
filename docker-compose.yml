@@ -1,0 +1,74 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: stolio
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-stolio_dev_password}
+      POSTGRES_DB: stolio
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U stolio -d stolio"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://stolio:${POSTGRES_PASSWORD:-stolio_dev_password}@postgres:5432/stolio?schema=public
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+      NEXT_PUBLIC_APP_DOMAIN: ${NEXT_PUBLIC_APP_DOMAIN:-localhost}
+      UPLOAD_ROOT: /data/uploads
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
+      NEXT_PUBLIC_STUDIO_PHONE: ${NEXT_PUBLIC_STUDIO_PHONE:-TODO}
+      NEXT_PUBLIC_STUDIO_WHATSAPP: ${NEXT_PUBLIC_STUDIO_WHATSAPP:-TODO}
+      NEXT_PUBLIC_STUDIO_TELEGRAM: ${NEXT_PUBLIC_STUDIO_TELEGRAM:-TODO}
+      NEXT_PUBLIC_STUDIO_EMAIL: ${NEXT_PUBLIC_STUDIO_EMAIL:-TODO}
+    volumes:
+      - uploads:/data/uploads
+    ports:
+      - "3000:3000"
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    profiles: ["prod"]
+
+  backup:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-stolio_dev_password}
+      DATABASE_URL: postgresql://stolio:${POSTGRES_PASSWORD:-stolio_dev_password}@postgres:5432/stolio
+    volumes:
+      - ./scripts:/scripts:ro
+      - backups:/backups
+      - uploads:/data/uploads:ro
+    entrypoint: ["/bin/sh", "-c", "while true; do /scripts/backup.sh; sleep 86400; done"]
+    profiles: ["prod"]
+
+volumes:
+  pgdata:
+  uploads:
+  backups:
+  caddy_data:
+  caddy_config:
