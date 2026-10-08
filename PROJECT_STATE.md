@@ -52,3 +52,7 @@ npm run dev
 ```
 
 Админ по умолчанию: `admin@stolio.local` / `ChangeMeNow123!` (сменить!).
+
+## PR
+
+https://github.com/Hmeeti/oblako/pull/2
