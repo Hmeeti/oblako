@@ -1,0 +1,286 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum PlatformRole {
+  studio_admin
+  user
+}
+
+enum ProjectRole {
+  project_owner
+  project_editor
+}
+
+enum LeadStatus {
+  new
+  in_progress
+  quote_sent
+  won
+  lost
+}
+
+enum ContactMethod {
+  whatsapp
+  telegram
+  call
+}
+
+enum ProjectStatus {
+  draft
+  live
+  paused
+}
+
+model User {
+  id            String         @id @default(cuid())
+  email         String         @unique
+  name          String?
+  passwordHash  String
+  platformRole  PlatformRole   @default(user)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  sessions      Session[]
+  memberships   ProjectMember[]
+  assignedLeads Lead[]         @relation("LeadAssignee")
+  auditLogs     AuditLog[]
+  menuVersions  MenuVersion[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  ipHash    String?
+  userAgent String?
+
+  @@index([userId])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  email     String
+  tokenHash String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([email])
+}
+
+model ProjectMember {
+  id        String      @id @default(cuid())
+  userId    String
+  projectId String
+  role      ProjectRole
+  createdAt DateTime    @default(now())
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project   Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, projectId])
+  @@index([projectId])
+}
+
+model Lead {
+  id                  String        @id @default(cuid())
+  name                String
+  phone               String
+  contactMethod       ContactMethod
+  venueName           String?
+  venueType           String?
+  city                String?
+  message             String?
+  files               Json          @default("[]")
+  source              Json?
+  status              LeadStatus    @default(new)
+  assignedToId        String?
+  assignedTo          User?         @relation("LeadAssignee", fields: [assignedToId], references: [id])
+  notes               String?
+  consentAt           DateTime
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+  convertedProjectId  String?
+  convertedProject    Project?      @relation(fields: [convertedProjectId], references: [id])
+  honeypotScore       Int           @default(0)
+
+  @@index([status, createdAt])
+  @@index([phone])
+}
+
+model Project {
+  id                   String          @id @default(cuid())
+  name                 String
+  slug                 String          @unique
+  status               ProjectStatus   @default(draft)
+  plan                 String          @default("starter")
+  paidUntil            DateTime?
+  defaultLocale        String          @default("ru")
+  locales              String[]        @default(["ru", "kk", "en"])
+  timezone             String          @default("Asia/Almaty")
+  ownerId              String?
+  themeId              String          @default("classic-green")
+  customDomain         String?
+  logo                 String?
+  contacts             Json            @default("{}")
+  workHours            Json            @default("{}")
+  serviceChargePercent Int             @default(0)
+  allergyNote          Json?
+  features             Json            @default("{}")
+  demo                 Boolean         @default(false)
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+  members              ProjectMember[]
+  categories           Category[]
+  items                Item[]
+  menuVersions         MenuVersion[]
+  qrCodes              QrCode[]
+  scanEvents           ScanEvent[]
+  menuViews            MenuView[]
+  itemTaps             ItemTap[]
+  auditLogs            AuditLog[]
+  leads                Lead[]
+
+  @@index([status])
+}
+
+model Category {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name      Json
+  group     String?
+  sort      Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  items     Item[]
+
+  @@index([projectId, sort])
+}
+
+model Item {
+  id          String    @id @default(cuid())
+  projectId   String
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  categoryId  String
+  category    Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  name        Json
+  description Json?
+  price       Int       @default(0)
+  variants    Json?
+  volume      String?
+  photos      Json      @default("[]")
+  tags        String[]  @default([])
+  allergens   String[]  @default([])
+  nutrition   Json?
+  available   Boolean   @default(true)
+  popular     Boolean   @default(false)
+  sort        Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([projectId, categoryId, sort])
+  @@index([projectId, available])
+}
+
+model MenuVersion {
+  id          String   @id @default(cuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  snapshot    Json
+  note        String?
+  createdById String?
+  createdBy   User?    @relation(fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+
+  @@index([projectId, createdAt])
+}
+
+model QrCode {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  label       String?
+  tableNumber Int?
+  style       Json     @default("{}")
+  createdAt   DateTime @default(now())
+  scanEvents  ScanEvent[]
+
+  @@index([projectId])
+}
+
+model ScanEvent {
+  id         String   @id @default(cuid())
+  projectId  String
+  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  qrCodeId   String?
+  qrCode     QrCode?  @relation(fields: [qrCodeId], references: [id], onDelete: SetNull)
+  day        DateTime @db.Date
+  count      Int      @default(0)
+  deviceClass String  @default("unknown")
+
+  @@unique([qrCodeId, day, deviceClass])
+  @@index([projectId, day])
+}
+
+model MenuView {
+  id          String   @id @default(cuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  day         DateTime @db.Date
+  count       Int      @default(0)
+  locale      String   @default("ru")
+  deviceClass String   @default("unknown")
+  themeMode   String   @default("light")
+
+  @@unique([projectId, day, locale, deviceClass, themeMode])
+  @@index([projectId, day])
+}
+
+model ItemTap {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  itemId    String
+  day       DateTime @db.Date
+  count     Int      @default(0)
+
+  @@unique([projectId, itemId, day])
+  @@index([projectId, day])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  projectId String?
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String
+  meta      Json?
+  createdAt DateTime @default(now())
+
+  @@index([projectId, createdAt])
+}
+
+model Setting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+}
+
+model LeadRateLimit {
+  id        String   @id @default(cuid())
+  key       String
+  windowStart DateTime
+  count     Int      @default(0)
+
+  @@unique([key, windowStart])
+}

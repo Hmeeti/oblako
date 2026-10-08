@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Stolio">
+  <rect width="128" height="128" rx="28" fill="#0F1A14"/>
+  <circle cx="64" cy="64" r="38" fill="none" stroke="#0F1A14" stroke-width="0"/>
+  <circle cx="64" cy="64" r="38" fill="none" stroke="#FFFFFF" stroke-width="8"/>
+  <rect x="48" y="42" width="8" height="8" rx="1.5" fill="#FFFFFF"/>
+  <rect x="58" y="42" width="8" height="8" rx="1.5" fill="#FFFFFF"/>
+  <rect x="48" y="62" width="8" height="20" rx="1.5" fill="#FFFFFF"/>
+  <rect x="72" y="62" width="8" height="20" rx="1.5" fill="#FFFFFF"/>
+</svg>

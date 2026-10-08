@@ -1,0 +1,16 @@
+{
+  email {$CADDY_EMAIL:admin@example.com}
+}
+
+{$APP_DOMAIN:localhost} {
+  encode gzip
+  header {
+    Strict-Transport-Security "max-age=31536000; includeSubDomains"
+    X-Content-Type-Options "nosniff"
+    Referrer-Policy "strict-origin-when-cross-origin"
+    Content-Security-Policy "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'; font-src 'self' data:; frame-ancestors 'self';"
+  }
+  reverse_proxy app:3000
+}
+
+# Поддомены меню позже: *.{$APP_DOMAIN}

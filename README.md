@@ -1,134 +1,69 @@
-# OBLAKO — Automated Restaurant Menu
+# Stolio — платформа электронных QR-меню
 
-Full-stack menu for **OBLAKO Lounge Bar**: public site, hidden admin panel, SQLite database, and an automated image-matching pipeline for dish photos.
+Один сервер: лендинг, кабинет студии (PWA) и публичные меню заведений.
 
-## Stack
+> **Владельцу:** перед рекламой проверьте свободу домена (`.kz` / `.com` / `.app`) и товарного знака **Stolio**. Название читается как «Сто́лио» на RU/KK/EN.
 
-| Layer | Technology |
-|---|---|
-| Server | Node.js 18+, Express |
-| Database | SQLite via built-in `node:sqlite` (Node 22+) |
-| Auth | bcrypt + express-session, rate-limited login |
-| Images | HEIC→JPEG (`heic-convert`), optimize (`sharp`) |
-| Vision matching | OpenAI GPT-4o-mini Vision (optional) + heuristic fallback |
-| Public UI | Existing OBLAKO static frontend + `/api/menu` |
-| Admin UI | SPA at obscure URL (not linked publicly) |
+## Быстрый старт (локально)
 
-## Hybrid deploy (GitHub Pages + Render)
+1. Установите Docker и Node.js 22+.
+2. Скопируйте env: `cp .env.example .env`
+3. Поднимите Postgres: `docker compose -f docker-compose.dev.yml up -d`
+4. Установите зависимости: `npm install --legacy-peer-deps`
+5. Миграции: `npx prisma migrate dev --name init`
+6. Сид (админ + Park Avenue): `npm run db:seed`
+7. Запуск: `npm run dev` → http://localhost:3000
 
-Гостевое меню на **GitHub Pages**, админка и API на **Render**.
+Логин по умолчанию: `admin@stolio.local` / `ChangeMeNow123!` — **смените сразу**.
 
-Пошаговая инструкция: **[DEPLOY-HYBRID.md](./DEPLOY-HYBRID.md)**
+Демо-меню: `/m/park-avenue`. Удалить демо: `npm run db:clear-demo`.
 
-Кратко:
-1. Задеплой репозиторий на [Render](https://render.com) (есть `render.yaml`).
-2. Пропиши URL в `js/config.js` (`apiBase` + `adminUrl`).
-3. Включи GitHub Pages через Actions (workflow уже в репо).
-4. Админка: `https://your-app.onrender.com/admin.html`  
-   Логин: `hmeeti` / `9987650`
+## Деплой на VPS (простым языком)
 
-## Environment variables
+Рекомендуем **VPS в Казахстане**: по закону РК о персональных данных базы с данными граждан РК лучше держать на серверах в РК. **Согласовать с юристом.**
 
-Copy `.env.example` → `.env`:
+1. Арендуйте VPS (Ubuntu 22.04/24.04).
+2. Установите Docker: https://docs.docker.com/engine/install/ubuntu/
+3. Направьте домен A-записью на IP сервера.
+4. Скопируйте проект на сервер (`git clone` …).
+5. Заполните `.env` (пароль БД, домен, контакты, Telegram).
+6. Запуск: `docker compose --profile prod up -d --build`
+7. Миграции: `docker compose run --rm app npx prisma migrate deploy`
+8. Админ: `docker compose run --rm app npm run admin:create`
+9. Откройте сайт и проверьте `/healthz`.
 
-| Variable | Description |
-|---|---|
-| `PORT` | Server port (default `3000`) |
-| `SESSION_SECRET` | Random string for session cookies |
-| `ADMIN_PATH` | Obscure admin URL path (e.g. `ctl/x7k9m2p4w4oblako`) |
-| `ADMIN_USERNAME` | Admin login (default `hmeeti`) |
-| `ADMIN_PASSWORD_HASH` | bcrypt hash — **never store plaintext password** |
-| `OPENAI_API_KEY` | Optional — enables accurate AI photo matching |
-| `DATABASE_PATH` | SQLite file path (default `data/oblako.db`) |
+Обновление: `scripts/deploy.sh`  
+Бэкап: `scripts/backup.sh` (ротация 14 копий)  
+Восстановление: `scripts/restore.sh /backups/...` (сначала на тестовой копии).
 
-## Automated image pipeline
+### Если сайт упал
 
-Place dish photos in the `image/` folder (JPEG, PNG, HEIC supported). Logo/favicon are ignored.
+1. `docker compose ps` — какие контейнеры живы.
+2. `docker compose logs app --tail=200` — ошибки приложения.
+3. Проверьте `/healthz`.
+4. При необходимости восстановите последний бэкап на **тестовой** машине, затем на проде.
 
-```bash
-npm run match-images
-```
-
-### What the pipeline does
-
-1. **Scans** `image/` for dish photos  
-2. **Converts** HEIC → optimized JPEG in `public/image/optimized/`  
-3. **Analyzes** each photo:
-   - With `OPENAI_API_KEY`: GPT-4o Vision identifies the dish and picks the best menu item  
-   - Without API key: keyword/heuristic matching against names & descriptions  
-   - Optional DuckDuckGo hint lookup for ambiguous cases  
-4. **Assigns** the best photo to each menu item in the database  
-5. **Logs** every match in `image_matches` (viewable in admin → «Фото-матчи»)
-
-### Re-run when new photos arrive
-
-Add files to `image/` and run again:
+## Команды качества
 
 ```bash
-npm run match-images
+npm run typecheck
+npm run lint
+npm run test
+npm run e2e   # нужен Playwright + поднятый сервер
 ```
 
-Already-assigned items are preserved; new photos fill empty slots or improve matches (delete `public/image/optimized/` to force full re-conversion).
+## Документы
 
-## Admin panel
+- `docs/ARCHITECTURE.md`
+- `docs/DECISIONS.md`
+- `docs/DATA_MODEL.md`
+- `PROJECT_STATE.md`
 
-Access only via the secret URL from `ADMIN_PATH`. Not linked on the public site, blocked in `robots.txt`, decoy 404 on `/admin`.
+## TODO от владельца
 
-Features:
-- Dashboard (stats, recent activity)
-- CRUD for dishes & categories
-- Manual photo upload / reassignment
-- Filterable activity log (logins, edits, image changes)
-- Basic analytics (page views, popular categories)
-- Easter eggs: floating cloud loader, confetti on save, witty empty states
-
-## Public site
-
-- Loads menu dynamically from `GET /api/menu`
-- Categories, subcategories, dual prices, volumes
-- Dish photos when assigned by pipeline or admin
-- Responsive grid/list views
-- Search across names & descriptions
-
-## Scripts
-
-| Command | Purpose |
-|---|---|
-| `npm start` | Run production server |
-| `npm run dev` | Run with auto-reload |
-| `npm run setup` | Create `.env`, seed database |
-| `npm run seed` | Import menu from `js/data.js` |
-| `npm run match-images` | Run photo matching pipeline |
-| `npm run hash-password -- "pass"` | Generate bcrypt hash |
-
-## Security notes
-
-- Password is stored as **bcrypt hash** only — never commit `.env`
-- Admin path is configurable and non-obvious
-- Login rate-limited (10 attempts / 15 min)
-- Sessions expire after 2 hours
-- Admin routes return 401 without valid session
-- `/admin` and similar paths show a decoy 404
-
-## Project structure
-
-```
-oblako/
-├── server/           # Express app, routes, DB
-├── scripts/          # setup, seed, hash-password
-├── pipeline/         # image convert, vision, matcher
-├── admin-panel/      # hidden admin SPA
-├── js/data.js        # seed data source (157 items)
-├── image/            # source dish photos (HEIC/JPEG)
-├── public/image/     # optimized & uploaded images
-└── data/oblako.db    # SQLite database (created on setup)
-```
-
-## Updating menu data
-
-1. Edit items in the **admin panel**, or  
-2. Edit `js/data.js`, delete `data/oblako.db`, run `npm run seed`
-
----
-
-© 2026 OBLAKO — developed by **hmeeti**
+- Контакты студии (телефон, WhatsApp, Telegram, email)
+- Домен и DNS
+- Токен Telegram-бота + chat id
+- Тарифы для лендинга (или оставить «по запросу»)
+- Юридические тексты политики (сейчас черновик-заглушка)
+- Согласие клиентов на публикацию кейсов
