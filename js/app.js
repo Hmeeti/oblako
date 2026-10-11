@@ -443,6 +443,14 @@
         refreshQty(id);
       }
     });
+
+    root.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      const photoEl = e.target.closest('[data-lightbox]');
+      if (!photoEl || e.target !== photoEl) return;
+      e.preventDefault();
+      openPhoto(photoEl);
+    });
   }
 
   function refreshQty(id) {

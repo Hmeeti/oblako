@@ -1,6 +1,6 @@
 /* Service Worker — SWR for menu/app, images revalidate */
-const CACHE_STATIC = 'oblako-static-v9';
-const CACHE_IMAGES = 'oblako-images-v9';
+const CACHE_STATIC = 'oblako-static-v10';
+const CACHE_IMAGES = 'oblako-images-v10';
 
 const PRECACHE = [
   './',
