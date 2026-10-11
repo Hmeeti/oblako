@@ -14,13 +14,41 @@ const { syncMenuToDataJs } = require('./sync-data');
 const publicRoutes = require('./routes/public');
 const adminRoutes = require('./routes/admin');
 
+function readMenuRevisionFromDataJs() {
+  try {
+    const src = fs.readFileSync(path.join(process.cwd(), 'js', 'data.js'), 'utf8');
+    const m = src.match(/const\s+MENU_REVISION\s*=\s*['"]([^'"]+)['"]/);
+    return m ? m[1] : null;
+  } catch {
+    return null;
+  }
+}
+
 function ensureSeeded() {
   try {
     initDb();
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS app_meta (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL
+      );
+    `);
+
     const count = db.prepare('SELECT COUNT(*) AS c FROM menu_items').get().c;
-    if (count === 0) {
-      console.log('[boot] Empty database — seeding from js/data.js …');
-      execSync('node scripts/seed-menu.js', { stdio: 'inherit' });
+    const dbRev = db.prepare('SELECT value FROM app_meta WHERE key = ?').get('menu_revision')?.value;
+    const fileRev = readMenuRevisionFromDataJs();
+    const needsReseed = count === 0 || (fileRev && fileRev !== dbRev);
+
+    if (needsReseed) {
+      console.log(
+        `[boot] Reseeding menu from js/data.js (db=${count} items, rev ${dbRev || 'none'} → ${fileRev || 'none'}) …`
+      );
+      execSync('node scripts/seed-menu.js --force', { stdio: 'inherit' });
+      try {
+        syncMenuToDataJs({ pushGithub: false });
+      } catch (err) {
+        console.warn('[boot] sync after reseed:', err.message);
+      }
     }
 
     const filled = backfillMissingImages();

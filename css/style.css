@@ -77,9 +77,9 @@ body.splash-active {
 }
 
 .splash__logo {
-  width: min(220px, 55vw);
+  width: min(340px, 82vw);
   height: auto;
-  filter: drop-shadow(0 0 40px rgba(201, 169, 110, 0.35));
+  filter: drop-shadow(0 0 52px rgba(201, 169, 110, 0.5));
   animation: splashLogo 2s ease-in-out infinite alternate;
 }
 
@@ -337,7 +337,7 @@ header.header--compact .header-meta {
 }
 
 header.header--compact .logo-img {
-  width: clamp(100px, 28vw, 130px);
+  width: clamp(150px, 40vw, 200px);
 }
 
 .logo-img-wrap {
@@ -348,11 +348,12 @@ header.header--compact .logo-img {
 }
 
 .logo-img {
-  width: clamp(130px, 34vw, 175px);
+  width: clamp(180px, 48vw, 240px);
   height: auto;
   display: block;
   object-fit: contain;
   transition: width 0.35s ease;
+  filter: drop-shadow(0 0 18px rgba(201, 169, 110, 0.28));
 }
 
 .view-toggle {
@@ -1352,15 +1353,21 @@ main {
 
 .logo-img,
 .splash__logo {
-  height: 56px;
-  width: auto;
-  max-width: min(220px, 55vw);
+  height: auto;
   object-fit: contain;
   display: block;
   margin-inline: auto;
 }
 
-.logo-img { height: 48px; }
+.splash__logo {
+  width: min(340px, 82vw);
+  max-width: 360px;
+}
+
+.logo-img {
+  width: clamp(180px, 48vw, 240px);
+  max-width: min(240px, 78vw);
+}
 
 .dock {
   bottom: calc(10px + env(safe-area-inset-bottom, 0px));
@@ -1521,5 +1528,6 @@ input, button, textarea, select {
   .dock__btn { padding: 8px 10px; min-width: 50px; font-size: 8px; }
   .dock__btn span { display: none; }
   .dock { gap: 2px; padding: 5px 6px; }
-  .logo-img { height: 42px; }
+  .splash__logo { width: min(320px, 86vw); }
+  .logo-img { width: clamp(170px, 52vw, 220px); }
 }

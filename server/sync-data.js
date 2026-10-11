@@ -30,9 +30,23 @@ function imageForItem(item, mergedMap, { forGithub = false } = {}) {
   return image;
 }
 
+function readMenuRevision() {
+  try {
+    const row = db.prepare('SELECT value FROM app_meta WHERE key = ?').get('menu_revision');
+    if (row?.value) return row.value;
+  } catch (_) { /* table may not exist yet */ }
+  try {
+    const src = fs.readFileSync(path.join(process.cwd(), 'js', 'data.js'), 'utf8');
+    const m = src.match(/const\s+MENU_REVISION\s*=\s*['"]([^'"]+)['"]/);
+    if (m) return m[1];
+  } catch (_) { /* ignore */ }
+  return 'unknown';
+}
+
 function buildDataJs(categories, items, { forGithub = false } = {}) {
   const mergedMap = buildMergedImageMap(items);
   const catList = categories.map(c => `  '${escapeStr(c.name)}'`).join(',\n');
+  const revision = readMenuRevision();
 
   const itemBlocks = items.map(item => {
     const image = imageForItem(item, mergedMap, { forGithub });
@@ -53,7 +67,12 @@ function buildDataJs(categories, items, { forGithub = false } = {}) {
     return `  { ${parts.join(', ')} }`;
   }).join(',\n');
 
-  return `const CATEGORY_ORDER = [\n${catList}\n];\n\nconst MENU = [\n${itemBlocks}\n];\n\nMENU.forEach((item, idx) => {\n  item.uid = \`item-\${idx}\`;\n});\n`;
+  return (
+    `/** Bump when kitchen menu structure/prices change — Render reseeds SQLite on mismatch. */\n` +
+    `const MENU_REVISION = '${escapeStr(revision)}';\n\n` +
+    `const CATEGORY_ORDER = [\n${catList}\n];\n\nconst MENU = [\n${itemBlocks}\n];\n\n` +
+    `MENU.forEach((item, idx) => {\n  item.uid = \`item-\${idx}\`;\n});\n`
+  );
 }
 
 function buildImageMapJs(items, { forGithub = false } = {}) {

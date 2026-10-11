@@ -10,19 +10,24 @@ const root = process.cwd();
 const dataCode = fs.readFileSync(path.join(root, 'js', 'data.js'), 'utf8');
 const mapCode = fs.readFileSync(path.join(root, 'js', 'image-map.js'), 'utf8');
 const ctx = {};
-vm.runInNewContext(dataCode + '\n;this.MENU=MENU;this.CATEGORY_ORDER=CATEGORY_ORDER;', ctx);
+vm.runInNewContext(
+  dataCode + '\n;this.MENU=MENU;this.CATEGORY_ORDER=CATEGORY_ORDER;this.MENU_REVISION=typeof MENU_REVISION!=="undefined"?MENU_REVISION:null;',
+  ctx
+);
 vm.runInNewContext(mapCode + '\n;this.IMAGE_MAP=IMAGE_MAP;', ctx);
 
 const BAR = new Set(['Кофе и чай', 'Безалкогольные', 'Алкогольные']);
 
 const items = (ctx.MENU || []).map(item => {
-  const image = item.image || (ctx.IMAGE_MAP && ctx.IMAGE_MAP[item.id]) || null;
+  const photoKey = item.photoId || item.id;
+  const image = item.image || (ctx.IMAGE_MAP && (ctx.IMAGE_MAP[photoKey] || ctx.IMAGE_MAP[item.id])) || null;
   const out = {
     id: item.id,
     cat: item.cat,
     name: item.name,
     price: item.price ?? null,
   };
+  if (item.photoId) out.photoId = item.photoId;
   if (item.subcat) out.subcat = item.subcat;
   if (item.desc) out.desc = item.desc;
   if (item.price2 != null) out.price2 = item.price2;
@@ -30,17 +35,17 @@ const items = (ctx.MENU || []).map(item => {
   if (item.price2Label) out.price2Label = item.price2Label;
   if (item.volume) out.volume = item.volume;
   if (item.objectPosition) out.objectPosition = item.objectPosition;
-  if (!BAR.has(item.cat) && image) {
-    const id = item.id;
-    // Prefer optimized WebP set when present
-    const w400 = `image/dishes/w400/${id}.webp`;
-    const w800 = `image/dishes/w800/${id}.webp`;
+  if (!BAR.has(item.cat)) {
+    // Prefer optimized WebP; photoId lets new dishes reuse existing photos
+    const w400 = `image/dishes/w400/${photoKey}.webp`;
+    const w800 = `image/dishes/w800/${photoKey}.webp`;
     const hasWebp = fs.existsSync(path.join(root, w400));
-    out.image = hasWebp ? w400 : image;
     if (hasWebp) {
+      out.image = w400;
       out.imageSrcset = `${w400} 400w, ${w800} 800w`;
       out.imageFull = w800;
-    } else {
+    } else if (image) {
+      out.image = image;
       out.imageFull = image;
     }
   }
@@ -50,6 +55,7 @@ const items = (ctx.MENU || []).map(item => {
 
 const payload = {
   version: 1,
+  revision: ctx.MENU_REVISION || null,
   updatedAt: new Date().toISOString(),
   categories: ctx.CATEGORY_ORDER || [],
   items,

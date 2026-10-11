@@ -6,9 +6,11 @@ const { initDb, db } = require('../server/db');
 
 initDb();
 
+const force = process.argv.includes('--force') || process.env.FORCE_RESEED === '1';
+
 const dataPath = path.join(process.cwd(), 'js', 'data.js');
-const code = fs.readFileSync(dataPath, 'utf8') + '\n;({ MENU, CATEGORY_ORDER });';
-const { MENU, CATEGORY_ORDER } = vm.runInNewContext(code);
+const code = fs.readFileSync(dataPath, 'utf8') + '\n;({ MENU, CATEGORY_ORDER, MENU_REVISION });';
+const { MENU, CATEGORY_ORDER, MENU_REVISION } = vm.runInNewContext(code);
 
 let IMAGE_MAP = {};
 try {
@@ -16,11 +18,25 @@ try {
   IMAGE_MAP = vm.runInNewContext(mapCode, {}) || {};
 } catch (_) { /* optional */ }
 
+db.exec(`
+  CREATE TABLE IF NOT EXISTS app_meta (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+  );
+`);
+
 const existing = db.prepare('SELECT COUNT(*) AS c FROM menu_items').get().c;
-if (existing > 0) {
-  console.log(`Database already has ${existing} items. Skipping seed.`);
-  console.log('To re-seed, delete data/oblako.db and run again.');
+const currentRev = db.prepare('SELECT value FROM app_meta WHERE key = ?').get('menu_revision')?.value;
+
+if (existing > 0 && !force) {
+  console.log(`Database already has ${existing} items (rev=${currentRev || 'none'}). Skipping seed.`);
+  console.log('To re-seed: node scripts/seed-menu.js --force');
   process.exit(0);
+}
+
+if (force && existing > 0) {
+  console.log(`Force reseed: clearing ${existing} items (was rev=${currentRev || 'none'})…`);
+  db.exec('DELETE FROM menu_items; DELETE FROM categories;');
 }
 
 const insertCat = db.prepare('INSERT INTO categories (name, sort_order) VALUES (?, ?)');
@@ -39,21 +55,32 @@ const insertItem = db.prepare(`
   ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `);
 
+const BAR = new Set(['Кофе и чай', 'Безалкогольные', 'Алкогольные']);
 let orderByCat = {};
 let withImages = 0;
+
 MENU.forEach(item => {
   if (!orderByCat[item.cat]) orderByCat[item.cat] = 0;
   const sortOrder = orderByCat[item.cat]++;
 
-  let image = item.image || IMAGE_MAP[item.id] || null;
+  const photoKey = item.photoId || item.id;
+  let image = item.image || IMAGE_MAP[photoKey] || IMAGE_MAP[item.id] || null;
   let imageSource = image ? (item.image ? 'seed' : 'image-map') : null;
-  if (!image) {
-    const dish = path.join(process.cwd(), 'image', 'dishes', `${item.id}.jpg`);
-    if (fs.existsSync(dish)) {
-      image = `image/dishes/${item.id}.jpg`;
-      imageSource = 'dishes';
+
+  if (!BAR.has(item.cat)) {
+    const w400 = `image/dishes/w400/${photoKey}.webp`;
+    if (fs.existsSync(path.join(process.cwd(), w400))) {
+      image = w400;
+      imageSource = 'webp';
+    } else {
+      const dish = path.join(process.cwd(), 'image', 'dishes', `${photoKey}.jpg`);
+      if (fs.existsSync(dish)) {
+        image = `image/dishes/${photoKey}.jpg`;
+        imageSource = 'dishes';
+      }
     }
   }
+
   if (image) withImages++;
 
   insertItem.run(
@@ -74,4 +101,12 @@ MENU.forEach(item => {
   );
 });
 
-console.log(`Seeded ${MENU.length} menu items in ${CATEGORY_ORDER.length} categories (${withImages} with photos).`);
+db.prepare(`
+  INSERT INTO app_meta (key, value) VALUES ('menu_revision', ?)
+  ON CONFLICT(key) DO UPDATE SET value = excluded.value
+`).run(MENU_REVISION || 'unknown');
+
+console.log(
+  `Seeded ${MENU.length} menu items in ${CATEGORY_ORDER.length} categories ` +
+  `(${withImages} with photos, rev=${MENU_REVISION}).`
+);

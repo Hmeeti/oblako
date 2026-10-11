@@ -2,10 +2,11 @@
 (function () {
   const RULES_TAB = 'Правила заведения';
   const BAR_CATS = new Set(['Кофе и чай', 'Безалкогольные', 'Алкогольные']);
-  const CACHE_KEY = 'oblako-menu-cache-v1';
+  const CACHE_KEY = 'oblako-menu-cache-v2';
   const RULES_SEEN_KEY = 'oblako-rules-seen';
   // Bump when dish photos change so browsers/SW drop stale files
-  const PHOTO_VER = '20261005a';
+  const PHOTO_VER = '20261012a';
+  const LOCAL_REVISION = (typeof MENU_REVISION !== 'undefined' && MENU_REVISION) ? MENU_REVISION : null;
 
   let activeCategory = 'Все';
   let searchQuery = '';
@@ -15,6 +16,7 @@
   let menuBound = false;
   let cardIndex = 0;
   let sectionObserver = null;
+  let appliedRevision = LOCAL_REVISION;
 
   const escapeHtml = (value) => String(value ?? '')
     .replace(/&/g, '&amp;')
@@ -59,7 +61,8 @@
 
   function dishWebp(item, size) {
     if (!item?.id || isBarItem(item)) return '';
-    return `image/dishes/w${size}/${item.id}.webp`;
+    const photoKey = item.photoId || item.id;
+    return `image/dishes/w${size}/${photoKey}.webp`;
   }
 
   function getCategoryTabs() {
@@ -735,16 +738,35 @@
 
   function applyMenuPayload(data, { fromApi = false } = {}) {
     if (!data?.items?.length) return false;
+
+    // Don't let a stale Render DB wipe the Word-menu rewrite from menu.json / data.js
+    if (fromApi && appliedRevision && data.revision && data.revision !== appliedRevision) {
+      const localCats = new Set(
+        (typeof CATEGORY_ORDER !== 'undefined' ? CATEGORY_ORDER : []).concat(
+          MENU.map(i => i.cat)
+        )
+      );
+      const apiCats = new Set(data.categories || []);
+      const missing = [...localCats].filter(c => c && !apiCats.has(c));
+      if (missing.length) return false;
+    }
+    if (fromApi && appliedRevision && !data.revision) {
+      const hasNewKitchen = data.categories?.includes('Мясо из тандыра')
+        && data.categories?.includes('Закуски под водочку');
+      if (!hasNewKitchen) return false;
+    }
+
     MENU.length = 0;
     data.items.forEach(item => {
       const next = { ...item };
       if (next.image) next.image = resolveImageUrl(next.image);
       if (next.imageFull) next.imageFull = resolveImageUrl(next.imageFull);
       if (!next.noPhoto && !isBarItem(next)) {
-        if (!next.image && typeof IMAGE_MAP !== 'undefined' && IMAGE_MAP[next.id]) {
-          next.image = resolveImageUrl(IMAGE_MAP[next.id]);
+        const mapKey = next.photoId || next.id;
+        if (!next.image && typeof IMAGE_MAP !== 'undefined' && IMAGE_MAP[mapKey]) {
+          next.image = resolveImageUrl(IMAGE_MAP[mapKey]);
         }
-        // Prefer local WebP when available on Pages
+        // Prefer local WebP when available on Pages (photoId aliases share files)
         if (dishWebp(next, 400)) {
           next.image = dishWebp(next, 400);
           next.imageFull = dishWebp(next, 800);
@@ -760,9 +782,11 @@
       CATEGORY_ORDER.length = 0;
       data.categories.forEach(c => CATEGORY_ORDER.push(c));
     }
+    if (data.revision) appliedRevision = data.revision;
     try {
       localStorage.setItem(CACHE_KEY, JSON.stringify({
         savedAt: Date.now(),
+        revision: appliedRevision,
         categories: [...CATEGORY_ORDER],
         items: MENU,
       }));
@@ -837,8 +861,9 @@
       if (dishWebp(item, 400)) {
         item.image = dishWebp(item, 400);
         item.imageFull = dishWebp(item, 800);
-      } else if (typeof IMAGE_MAP !== 'undefined' && IMAGE_MAP[item.id]) {
-        item.image = IMAGE_MAP[item.id];
+      } else if (typeof IMAGE_MAP !== 'undefined') {
+        const mapKey = item.photoId || item.id;
+        if (IMAGE_MAP[mapKey]) item.image = IMAGE_MAP[mapKey];
       }
     });
   }
