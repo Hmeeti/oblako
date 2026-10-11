@@ -666,7 +666,7 @@ main {
 /* CARD */
 .card {
   background: var(--card);
-  border: 1px solid var(--gold);
+  border: 1.5px solid var(--gold);
   border-radius: var(--radius);
   overflow: hidden;
   display: flex;
@@ -728,19 +728,20 @@ main {
   }
 }
 
-/* PHOTO ZONE — reset <button> defaults (native border looks like white lines) */
+/* PHOTO ZONE — no inner frame; photo fills edge-to-edge inside the card */
 .card-photo {
   -webkit-appearance: none;
   appearance: none;
   display: block;
   width: 100%;
   margin: 0;
-  padding: 0;
+  padding: 0 !important;
   border: 0 !important;
-  outline: none;
-  box-shadow: none;
+  outline: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
   aspect-ratio: 4/3;
-  background: #141414;
+  background: #111;
   position: relative;
   overflow: hidden;
   flex-shrink: 0;
@@ -795,17 +796,19 @@ main {
 }
 
 .card-photo__img {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
   object-position: center;
   display: block;
-  border: 0;
-  outline: none;
+  border: 0 !important;
+  outline: none !important;
+  box-shadow: none !important;
   margin: 0;
   padding: 0;
-  background: #141414;
-  vertical-align: top;
+  background: #111;
 }
 
 .menu-loading {
