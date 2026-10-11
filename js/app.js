@@ -267,10 +267,12 @@
   }
 
   function buildPhoto(item, eager) {
-    const frame = document.createElement('button');
-    frame.type = 'button';
+    // Use <div>, not <button>: native button UA styles draw a light/white frame around the photo
+    const frame = document.createElement('div');
     frame.className = 'card-photo';
     frame.dataset.lightbox = '1';
+    frame.setAttribute('role', 'button');
+    frame.tabIndex = 0;
     frame.setAttribute('aria-label', `Фото: ${item.name}`);
 
     const pos = item.objectPosition || 'center';
@@ -280,11 +282,12 @@
 
     if (!w400 && !item.image) {
       frame.classList.add('card-photo--empty');
+      frame.removeAttribute('role');
+      frame.removeAttribute('tabindex');
       const ph = document.createElement('div');
       ph.className = 'card-photo__placeholder';
       ph.innerHTML = '<span>OBLAKO</span><small>Скоро фото</small>';
       frame.appendChild(ph);
-      frame.disabled = true;
       return frame;
     }
 
@@ -316,12 +319,13 @@
     img.addEventListener('error', () => {
       skel.remove();
       frame.classList.add('card-photo--empty');
+      frame.removeAttribute('role');
+      frame.removeAttribute('tabindex');
       img.remove();
       const ph = document.createElement('div');
       ph.className = 'card-photo__placeholder';
       ph.innerHTML = '<span>OBLAKO</span><small>Скоро фото</small>';
       frame.appendChild(ph);
-      frame.disabled = true;
     }, { once: true });
 
     frame.appendChild(img);
@@ -398,11 +402,17 @@
     const root = document.getElementById('menu-root');
     if (!root) return;
 
+    const openPhoto = (photoEl) => {
+      if (!photoEl || photoEl.classList.contains('card-photo--empty')) return;
+      const img = photoEl.querySelector('img');
+      if (!img) return;
+      openLightbox(img.dataset.full || img.src, img.alt || '');
+    };
+
     root.addEventListener('click', (e) => {
       const photoBtn = e.target.closest('[data-lightbox]');
-      if (photoBtn && !photoBtn.disabled) {
-        const img = photoBtn.querySelector('img');
-        openLightbox(img?.dataset.full || img?.src, img?.alt || '');
+      if (photoBtn) {
+        openPhoto(photoBtn);
         return;
       }
 
