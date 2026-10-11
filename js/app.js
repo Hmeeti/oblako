@@ -5,7 +5,7 @@
   const CACHE_KEY = 'oblako-menu-cache-v2';
   const RULES_SEEN_KEY = 'oblako-rules-seen';
   // Bump when dish photos change so browsers/SW drop stale files
-  const PHOTO_VER = '20261012a';
+  const PHOTO_VER = '20261012b';
   const LOCAL_REVISION = (typeof MENU_REVISION !== 'undefined' && MENU_REVISION) ? MENU_REVISION : null;
 
   let activeCategory = 'Все';

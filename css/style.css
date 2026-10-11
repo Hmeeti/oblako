@@ -677,46 +677,6 @@ main {
     0 4px 16px rgba(0, 0, 0, 0.2);
 }
 
-.card::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: linear-gradient(
-    135deg,
-    rgba(201, 169, 110, 0.14) 0%,
-    transparent 42%,
-    transparent 58%,
-    rgba(201, 169, 110, 0.08) 100%
-  );
-  opacity: 0.35;
-  pointer-events: none;
-  z-index: 2;
-  transition: opacity .3s;
-}
-
-.card::after {
-  content: '';
-  position: absolute;
-  top: -40%;
-  left: -60%;
-  width: 50%;
-  height: 180%;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255, 255, 255, 0.04) 45%,
-    rgba(201, 169, 110, 0.12) 50%,
-    rgba(255, 255, 255, 0.04) 55%,
-    transparent
-  );
-  transform: skewX(-18deg);
-  opacity: 0;
-  pointer-events: none;
-  z-index: 3;
-  transition: opacity .35s, left .6s ease;
-}
-
 .card:hover {
   border-color: rgba(201, 169, 110, 0.28);
   transform: translateY(-3px);
@@ -724,12 +684,6 @@ main {
     0 0 0 1px rgba(201, 169, 110, 0.12),
     0 8px 28px rgba(201, 169, 110, 0.1),
     0 12px 32px rgba(0, 0, 0, 0.28);
-}
-
-.card:hover::before { opacity: 0.65; }
-.card:hover::after {
-  opacity: 1;
-  left: 120%;
 }
 
 .card--tilt {
@@ -788,18 +742,6 @@ main {
   flex-shrink: 0;
 }
 
-.card-photo::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    to bottom right,
-    rgba(201, 169, 110, 0.06),
-    transparent 55%
-  );
-  pointer-events: none;
-}
-
 /* CARD BODY */
 .card-body {
   padding: 12px 14px 14px;
@@ -811,9 +753,7 @@ main {
 
 .card-placeholder {
   border-radius: 6px;
-  background: linear-gradient(90deg, #222 0%, #2a2a2a 50%, #222 100%);
-  background-size: 200% 100%;
-  animation: shimmer 2.4s ease-in-out infinite;
+  background: #1a1a1a;
 }
 
 .card-placeholder--title {
@@ -1240,9 +1180,7 @@ main {
 .card-photo__skel,
 .card-photo--skeleton,
 .skel {
-  background: linear-gradient(90deg, #1a1a1a 0%, #242424 50%, #1a1a1a 100%);
-  background-size: 200% 100%;
-  animation: shimmer 1.6s ease-in-out infinite;
+  background: #161616;
 }
 
 .card-photo__skel {
