@@ -8,11 +8,8 @@ body.vip-mode {
 }
 
 body.vip-mode .card {
-  border-color: rgba(201, 169, 110, 0.25);
-  box-shadow:
-    0 0 0 1px rgba(201, 169, 110, 0.1),
-    0 12px 40px rgba(201, 169, 110, 0.08),
-    0 8px 32px rgba(0, 0, 0, 0.35);
+  border-color: var(--gold);
+  box-shadow: none;
 }
 
 body.vip-mode .watermark img {

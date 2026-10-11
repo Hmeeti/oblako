@@ -634,6 +634,8 @@ main {
   min-width: 130px;
   aspect-ratio: auto;
   align-self: stretch;
+  border: none;
+  border-right: none;
 }
 
 .grid--list .card-body {
@@ -664,26 +666,20 @@ main {
 /* CARD */
 .card {
   background: var(--card);
-  border: 1px solid var(--border);
+  border: 1px solid var(--gold);
   border-radius: var(--radius);
   overflow: hidden;
   display: flex;
   flex-direction: column;
   position: relative;
   isolation: isolate;
-  transition: border-color .3s, transform .3s, box-shadow .3s;
-  box-shadow:
-    0 0 0 1px rgba(201, 169, 110, 0.04),
-    0 4px 16px rgba(0, 0, 0, 0.2);
+  transition: border-color .3s, transform .3s;
+  box-shadow: none;
 }
 
 .card:hover {
-  border-color: rgba(201, 169, 110, 0.28);
-  transform: translateY(-3px);
-  box-shadow:
-    0 0 0 1px rgba(201, 169, 110, 0.12),
-    0 8px 28px rgba(201, 169, 110, 0.1),
-    0 12px 32px rgba(0, 0, 0, 0.28);
+  border-color: var(--gold-light);
+  transform: translateY(-2px);
 }
 
 .card--tilt {
@@ -1155,7 +1151,8 @@ main {
 /* Photo frames */
 .card-photo {
   aspect-ratio: 4 / 3;
-  border-bottom: 1px solid rgba(201, 169, 110, 0.14);
+  border: none;
+  border-bottom: none;
   border-radius: 0;
   padding: 0;
   display: block;
