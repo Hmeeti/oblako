@@ -158,7 +158,8 @@
     }
 
     if (res.status === 401) {
-      throw new AppError('Ключ GitHub недействителен или истёк. Выйдите и войдите заново с новым ключом.', 401);
+      writeJsonStorage(localStorage, KEYS.vault, null);
+      throw new AppError('Ключ GitHub недействителен или истёк. Войдите заново и вставьте новый ключ.', 401);
     }
     if (res.status === 403 || res.status === 429) {
       const limited = res.headers.get('x-ratelimit-remaining') === '0' || res.status === 429;
@@ -252,6 +253,15 @@
     const until = count >= MAX_FAILS ? Date.now() + LOCK_MS * 2 ** Math.min(extra, 4) : 0;
     writeJsonStorage(localStorage, KEYS.fails, { count, until });
     return { count, until };
+  }
+
+  // Forget the key stored on this device and ask for a new one
+  function resetToken() {
+    writeJsonStorage(localStorage, KEYS.vault, null);
+    $('token-field').hidden = false;
+    $('token-reset').hidden = true;
+    $('login-form').token.value = '';
+    $('login-form').token.focus();
   }
 
   function showLoginError(msg) {
@@ -1158,6 +1168,7 @@
   /* ---------- Events ---------- */
   function bindEvents() {
     $('login-form').addEventListener('submit', handleLogin);
+    $('token-reset').addEventListener('click', resetToken);
     $('logout').addEventListener('click', () => logout());
     $('save').addEventListener('click', save);
     $('undo').addEventListener('click', undoLast);
@@ -1226,7 +1237,9 @@
       $('login-submit').disabled = true;
       return;
     }
-    if (!readJsonStorage(localStorage, KEYS.vault)) $('token-field').hidden = false;
+    const hasKey = Boolean(readJsonStorage(localStorage, KEYS.vault));
+    $('token-field').hidden = hasKey;
+    $('token-reset').hidden = !hasKey;
 
     const session = readJsonStorage(sessionStorage, KEYS.session);
     if (session?.token && Date.now() - session.last < IDLE_MS) startSession(session.token);
