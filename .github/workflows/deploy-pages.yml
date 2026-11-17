@@ -1,6 +1,8 @@
-# Hybrid deploy: GitHub Pages (menu) + Railway (admin/API)
+# Publishes the site to GitHub Pages on every push to main
+# (including commits made by the admin panel). Data is validated first:
+# if the check fails, nothing is deployed and the live site stays as it was.
 
-name: Deploy GitHub Pages (guest menu)
+name: Deploy site
 
 on:
   push:
@@ -12,42 +14,43 @@ permissions:
   pages: write
   id-token: write
 
+# One deploy at a time; a newer push waits and replaces older queued ones
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Check data files and links
+        run: node .github/scripts/validate.mjs
+
   deploy:
+    needs: validate
+    runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
+      - uses: actions/configure-pages@v5
 
-      - name: Prepare static site
+      - name: Collect public files
         run: |
-          mkdir -p _site
-          # Guest menu only — do not publish admin panel on Pages
-          cp index.html sw.js manifest.webmanifest _site/
-          cp -r css js image _site/
           mkdir -p _site/data
-          cp data/menu.json _site/data/
-          # Drop heavy HEIC sources from Pages (keep web dishes + logo)
-          rm -f _site/image/*.HEIC _site/image/*.heic || true
-          rm -rf _site/image/optimized || true
-          # Ensure config.js exists
-          test -f _site/js/config.js
+          cp index.html sw.js manifest.webmanifest robots.txt _site/
+          cp -r css js image admin _site/
+          cp data/menu.json data/site.json _site/data/
 
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
 
-      - name: Deploy to GitHub Pages
-        id: deployment
+      - id: deployment
         uses: actions/deploy-pages@v4

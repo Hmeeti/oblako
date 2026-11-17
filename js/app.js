@@ -1,52 +1,43 @@
-/* OBLAKO guest menu — tabs, search, cards, lightbox, rules, data loading */
+/* OBLAKO guest menu — data from data/menu.json + data/site.json */
 (function () {
   'use strict';
 
   /* ---------- Constants & state ---------- */
   const ALL_TAB = 'Все';
   const RULES_TAB = 'Правила заведения';
-  const BAR_CATS = new Set(['Кофе и чай', 'Безалкогольные', 'Алкогольные']);
-  const CACHE_KEY = 'oblako-menu-cache-v3';
-  const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+  const CACHE_KEY = 'oblako-data-v4';
   const POLL_MS = 2 * 60 * 1000;
+  const FETCH_TIMEOUT_MS = 10000;
   const SEARCH_DEBOUNCE_MS = 140;
   const EAGER_PHOTOS = 4;
-  // Bump when dish photos change so browsers/SW drop stale files
-  const PHOTO_VER = '20261012b';
-  // Revision of the bundled js/data.js. Remote data with another revision is stale.
-  const LOCAL_REVISION = typeof MENU_REVISION !== 'undefined' ? MENU_REVISION : null;
+  const BADGES = { new: 'Новинка', hit: 'Хит' };
 
-  const state = {
-    category: ALL_TAB,
-    query: '',
-    view: 'grid',
-  };
-
+  const state = { category: ALL_TAB, query: '', view: 'grid' };
+  let menu = { categories: [], items: [] };
+  let site = null;
+  let signature = '';
   let cardIndex = 0;
   let searchTimer = null;
   let sectionObserver = null;
-  let lastSignature = '';
 
   const $ = (id) => document.getElementById(id);
   const els = {
-    tabs: $('tabs'),
-    tabsList: $('tabs-list'),
+    intro: $('home-intro'),
     search: $('search'),
+    searchWrap: $('search-wrap'),
     searchClear: $('search-clear'),
     viewToggle: $('view-toggle'),
+    tabs: $('tabs'),
+    tabsList: $('tabs-list'),
+    promos: $('promos'),
     menuRoot: $('menu-root'),
     rulesRoot: $('rules-root'),
     empty: $('empty-state'),
+    contacts: $('contacts'),
+    dockCall: $('dock-call'),
   };
 
   /* ---------- Helpers ---------- */
-  const escapeHtml = (value) => String(value ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-
   function el(tag, className, text) {
     const node = document.createElement(tag);
     if (className) node.className = className;
@@ -55,7 +46,7 @@
   }
 
   function formatPrice(price) {
-    if (price == null) return 'по запросу';
+    if (price == null || price === '') return 'по запросу';
     return `${Number(price).toLocaleString('ru-RU')} ₸`;
   }
 
@@ -67,31 +58,11 @@
     return 'позиций';
   }
 
-  function isBarItem(item) {
-    return Boolean(item?.noPhoto || BAR_CATS.has(item?.cat));
-  }
-
-  function apiUrl(path) {
-    const base = String(window.OBLAKO_CONFIG?.apiBase || '').replace(/\/$/, '');
-    return `${base}${path}`;
-  }
-
-  function resolveImageUrl(src) {
-    if (!src) return '';
-    let url = String(src);
-    if (url.startsWith('data:')) return url;
-    if (url.startsWith('/')) url = apiUrl(url);
-    return `${url}${url.includes('?') ? '&' : '?'}v=${PHOTO_VER}`;
-  }
-
-  function dishWebp(item, size) {
-    if (!item?.id || isBarItem(item)) return '';
-    return `image/dishes/w${size}/${item.photoId || item.id}.webp`;
-  }
-
-  function cartQty(id) {
-    return window.OBLAKO_CART?.qty?.(id) || 0;
-  }
+  const photoUrl = (item, size) => (item.photo ? `image/dishes/w${size}/${item.photo}` : '');
+  const categoryNames = () => menu.categories.map(c => c.name);
+  const isCompact = (cat) => Boolean(menu.categories.find(c => c.name === cat)?.compact);
+  const findItem = (id) => menu.items.find(i => i.id === id);
+  const cartQty = (id) => window.OBLAKO_CART?.qty?.(id) || 0;
 
   function vibrate(ms) {
     try {
@@ -100,34 +71,30 @@
   }
 
   function scrollToTabs() {
-    els.tabs?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    els.tabs.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function telHref(phone) {
+    return `tel:${String(phone).replace(/[^\d+]/g, '')}`;
   }
 
   /* ---------- Filtering ---------- */
-  function getCategoryTabs() {
-    return [
-      ALL_TAB,
-      ...CATEGORY_ORDER.filter(cat => MENU.some(i => i.name && i.cat === cat)),
-      RULES_TAB,
-    ];
-  }
-
   function getFiltered() {
     const q = state.query.toLowerCase().trim();
-    return MENU.filter(item => {
-      if (!item?.name) return false;
+    return menu.items.filter(item => {
+      if (!item.name) return false;
       if (state.category !== ALL_TAB && item.cat !== state.category) return false;
       if (!q) return true;
-      return [item.cat, item.subcat, item.name, item.desc]
+      return [item.cat, item.subcat, item.name, item.desc, item.about]
         .filter(Boolean).join(' ').toLowerCase().includes(q);
     });
   }
 
   /* ---------- Tabs ---------- */
   function renderTabs() {
-    if (!els.tabsList) return;
+    const cats = categoryNames().filter(cat => menu.items.some(i => i.cat === cat));
     const frag = document.createDocumentFragment();
-    getCategoryTabs().forEach(cat => {
+    [ALL_TAB, ...cats, RULES_TAB].forEach(cat => {
       const btn = el('button', 'tabs__btn', cat);
       btn.type = 'button';
       btn.dataset.cat = cat;
@@ -144,7 +111,7 @@
   }
 
   function setActiveTab(cat) {
-    els.tabsList?.querySelectorAll('.tabs__btn').forEach(btn => {
+    els.tabsList.querySelectorAll('.tabs__btn').forEach(btn => {
       const on = btn.dataset.cat === cat;
       btn.classList.toggle('is-active', on);
       if (on) btn.scrollIntoView({ inline: 'center', block: 'nearest' });
@@ -154,9 +121,7 @@
   function selectCategory(cat) {
     if (!cat || cat === state.category) return;
     state.category = cat;
-    if (cat !== ALL_TAB && cat !== RULES_TAB) trackEvent('category_view', { category: cat });
     render();
-    // Deep in the list? Jump back so the new category starts right under the tabs
     if (els.tabs.getBoundingClientRect().top <= 0) els.tabs.scrollIntoView({ block: 'start' });
   }
 
@@ -181,15 +146,13 @@
     dec.dataset.id = item.id;
     dec.setAttribute('aria-label', 'Меньше');
 
-    const num = el('span', 'card__qty-num', String(qty));
-
     const inc = el('button', 'card__qty-btn', '+');
     inc.type = 'button';
     inc.dataset.act = 'inc';
     inc.dataset.id = item.id;
     inc.setAttribute('aria-label', 'Больше');
 
-    wrap.append(dec, num, inc);
+    wrap.append(dec, el('span', 'card__qty-num', String(qty)), inc);
     return wrap;
   }
 
@@ -203,10 +166,7 @@
 
   function buildPhoto(item, eager) {
     const frame = el('div', 'card__photo');
-    const w400 = dishWebp(item, 400) || item.image;
-    const w800 = dishWebp(item, 800) || item.imageFull || w400;
-
-    if (!w400) {
+    if (!item.photo) {
       markPhotoEmpty(frame);
       return frame;
     }
@@ -223,12 +183,10 @@
     img.decoding = 'async';
     img.loading = eager ? 'eager' : 'lazy';
     if (eager) img.fetchPriority = 'high';
-    img.dataset.full = resolveImageUrl(w800);
-    if (w400 !== w800) {
-      img.srcset = `${resolveImageUrl(w400)} 400w, ${resolveImageUrl(w800)} 800w`;
-      img.sizes = '(max-width: 767px) 50vw, 260px';
-    }
-    img.src = resolveImageUrl(w400);
+    img.dataset.full = photoUrl(item, 800);
+    img.srcset = `${photoUrl(item, 400)} 400w, ${photoUrl(item, 800)} 800w`;
+    img.sizes = '(max-width: 767px) 50vw, 260px';
+    img.src = photoUrl(item, 400);
     img.addEventListener('load', () => img.classList.add('is-loaded'), { once: true });
     img.addEventListener('error', () => markPhotoEmpty(frame), { once: true });
 
@@ -257,24 +215,31 @@
   }
 
   function buildCard(item) {
-    const bar = isBarItem(item);
-    const card = el('article', bar ? 'card card--bar' : 'card');
-    card.dataset.id = item.id || '';
+    const compact = isCompact(item.cat) && !item.photo;
+    const card = el('article', compact ? 'card card--bar' : 'card');
+    card.dataset.id = item.id;
+    if (item.stop) card.classList.add('card--stop');
 
-    if (!bar) {
-      const eager = cardIndex < EAGER_PHOTOS && !state.query;
-      card.appendChild(buildPhoto(item, eager));
+    if (!compact) {
+      card.appendChild(buildPhoto(item, cardIndex < EAGER_PHOTOS && !state.query));
       cardIndex++;
     }
 
     const body = el('div', 'card__body');
+    if (item.stop || BADGES[item.badge]) {
+      const tags = el('div', 'card__tags');
+      if (item.stop) tags.appendChild(el('span', 'card__tag card__tag--stop', 'Нет в наличии'));
+      else tags.appendChild(el('span', `card__tag card__tag--${item.badge}`, BADGES[item.badge]));
+      body.appendChild(tags);
+    }
     body.appendChild(el('h3', 'card__title', item.name));
     // No composition → no line at all, so the layout never reserves empty space
     if (item.desc) body.appendChild(el('p', 'card__desc', item.desc));
+    if (item.about) body.appendChild(el('p', 'card__about', item.about));
 
     const footer = el('div', 'card__footer');
     footer.appendChild(buildPrice(item));
-    if (item.price != null) footer.appendChild(buildQtyControls(item));
+    if (item.price != null && !item.stop) footer.appendChild(buildQtyControls(item));
     body.appendChild(footer);
 
     card.appendChild(body);
@@ -282,13 +247,13 @@
   }
 
   function refreshQty(id) {
-    const wrap = els.menuRoot?.querySelector(`.card__qty[data-qty-for="${CSS.escape(id)}"]`);
-    const item = MENU.find(i => i.id === id);
+    const wrap = els.menuRoot.querySelector(`.card__qty[data-qty-for="${CSS.escape(id)}"]`);
+    const item = findItem(id);
     if (wrap && item) wrap.replaceWith(buildQtyControls(item));
   }
 
   function refreshAllQty() {
-    els.menuRoot?.querySelectorAll('.card__qty[data-qty-for]')
+    els.menuRoot.querySelectorAll('.card__qty[data-qty-for]')
       .forEach(node => refreshQty(node.dataset.qtyFor));
   }
 
@@ -305,7 +270,7 @@
 
   function buildGrid(items) {
     const grid = el('div', state.view === 'list' ? 'grid grid--list' : 'grid');
-    if (items.every(isBarItem)) grid.classList.add('grid--bar');
+    if (items.every(i => isCompact(i.cat) && !i.photo)) grid.classList.add('grid--bar');
     items.forEach(item => grid.appendChild(buildCard(item)));
     return grid;
   }
@@ -316,21 +281,13 @@
 
     if (withHead) {
       const head = el('div', 'section__head');
-      const line = () => {
-        const node = el('span', 'section__line');
-        node.setAttribute('aria-hidden', 'true');
-        return node;
-      };
-      head.append(
-        el('h2', 'section__title', cat),
-        line(),
-        el('span', 'section__count', `${items.length} поз.`),
-      );
+      const line = el('span', 'section__line');
+      line.setAttribute('aria-hidden', 'true');
+      head.append(el('h2', 'section__title', cat), line, el('span', 'section__count', `${items.length} поз.`));
       sec.appendChild(head);
     }
 
-    const hasSub = items.some(i => i.subcat);
-    if (!hasSub) {
+    if (!items.some(i => i.subcat)) {
       sec.appendChild(buildGrid(items));
       return sec;
     }
@@ -346,31 +303,30 @@
     return sec;
   }
 
-  function renderEmpty() {
-    const reset = el('button', 'empty__reset', state.query ? 'Сбросить поиск' : 'Показать всё меню');
-    reset.type = 'button';
-    reset.addEventListener('click', () => (state.query ? clearSearch() : goHome()));
-    els.empty.replaceChildren(
-      el('p', 'empty__title', 'Ничего не найдено'),
-      el('p', 'empty__hint', state.query
-        ? `По запросу «${state.query}» совпадений нет`
-        : 'В этом разделе пока пусто'),
-      reset,
-    );
+  function renderEmpty(title, hint, actionText, action) {
+    const btn = el('button', 'empty__reset', actionText);
+    btn.type = 'button';
+    btn.addEventListener('click', action);
+    els.empty.replaceChildren(el('p', 'empty__title', title), el('p', 'empty__hint', hint), btn);
     els.empty.hidden = false;
   }
 
   function renderMenu() {
+    if (!menu.items.length) return;   // still loading — skeletons stay
     const items = getFiltered();
     cardIndex = 0;
 
     if (!items.length) {
       els.menuRoot.replaceChildren();
-      renderEmpty();
+      renderEmpty(
+        'Ничего не найдено',
+        state.query ? `По запросу «${state.query}» совпадений нет` : 'В этом разделе пока пусто',
+        state.query ? 'Сбросить поиск' : 'Показать всё меню',
+        () => (state.query ? clearSearch() : goHome()),
+      );
       return;
     }
     els.empty.hidden = true;
-    els.empty.replaceChildren();
 
     const frag = document.createDocumentFragment();
     const single = state.category !== ALL_TAB && !state.query;
@@ -386,7 +342,7 @@
     }
 
     const groups = groupBy(items, 'cat');
-    CATEGORY_ORDER
+    categoryNames()
       .filter(cat => groups.has(cat))
       .forEach(cat => frag.appendChild(buildSection(cat, groups.get(cat), !single)));
 
@@ -409,31 +365,88 @@
     els.menuRoot.querySelectorAll('.section[data-cat]').forEach(sec => sectionObserver.observe(sec));
   }
 
-  /* ---------- Rules ---------- */
-  function renderRules() {
-    const blocks = typeof RULES === 'undefined' ? '' : RULES.map((section, idx) => `
-      <details class="rules-block"${idx === 0 ? ' open' : ''}>
-        <summary class="rules-block__title">${escapeHtml(section.title)}</summary>
-        <ul class="rules-block__list">
-          ${section.items.map(item => `<li>${escapeHtml(item)}</li>`).join('')}
-        </ul>
-      </details>`).join('');
+  /* ---------- Site texts: intro, promos, contacts, rules ---------- */
+  function renderSite() {
+    if (!site) return;
 
-    els.rulesRoot.innerHTML = `
-      <div class="rules">
-        <button type="button" class="rules__back" data-rules-back>← Вернуться к меню</button>
-        <h2 class="rules__title">Правила заведения</h2>
-        <p class="rules__intro">Ознакомьтесь с правилами посещения заведения OBLAKO.</p>
-        <div class="rules__list">${blocks}</div>
-      </div>`;
+    const intro = site.home?.intro?.trim();
+    els.intro.textContent = intro || '';
+    els.intro.hidden = !intro;
+
+    const promos = (site.promos || []).filter(p => p.active && (p.title || p.text));
+    els.promos.replaceChildren(...promos.map(p => {
+      const card = el('article', 'promo');
+      if (p.title) card.appendChild(el('h2', 'promo__title', p.title));
+      if (p.text) card.appendChild(el('p', 'promo__text', p.text));
+      return card;
+    }));
+    els.promos.hidden = !promos.length || state.category === RULES_TAB;
+
+    renderContacts(site.contacts || {});
+  }
+
+  function contactLink(href, text, external) {
+    const a = el('a', 'contacts__link', text);
+    a.href = href;
+    if (external) {
+      a.target = '_blank';
+      a.rel = 'noopener';
+    }
+    return a;
+  }
+
+  function renderContacts(c) {
+    const rows = [];
+    if (c.phone) rows.push(contactLink(telHref(c.phone), c.phone));
+    if (c.whatsapp) {
+      rows.push(contactLink(`https://wa.me/${String(c.whatsapp).replace(/\D/g, '')}`, 'WhatsApp', true));
+    }
+    if (c.instagram) {
+      const handle = String(c.instagram).replace(/^@|^https?:\/\/(www\.)?instagram\.com\//, '').replace(/\/$/, '');
+      rows.push(contactLink(`https://instagram.com/${handle}`, `Instagram @${handle}`, true));
+    }
+    if (c.address) {
+      rows.push(c.mapUrl ? contactLink(c.mapUrl, c.address, true) : el('span', 'contacts__text', c.address));
+    } else if (c.mapUrl) {
+      rows.push(contactLink(c.mapUrl, 'Мы на карте', true));
+    }
+    if (c.hours) rows.push(el('span', 'contacts__text', c.hours));
+
+    els.contacts.replaceChildren(...rows);
+    els.contacts.hidden = !rows.length;
+
+    els.dockCall.hidden = !c.phone;
+    if (c.phone) els.dockCall.href = telHref(c.phone);
+  }
+
+  function renderRules() {
+    const rules = site?.rules || { sections: [] };
+    const wrap = el('div', 'rules');
+    const back = el('button', 'rules__back', '← Вернуться к меню');
+    back.type = 'button';
+    back.dataset.rulesBack = '';
+    const list = el('div', 'rules__list');
+    rules.sections.forEach((section, idx) => {
+      const block = el('details', 'rules-block');
+      block.open = idx === 0;
+      const ul = el('ul', 'rules-block__list');
+      section.items.forEach(text => ul.appendChild(el('li', null, text)));
+      block.append(el('summary', 'rules-block__title', section.title), ul);
+      list.appendChild(block);
+    });
+    wrap.append(back, el('h2', 'rules__title', RULES_TAB));
+    if (rules.intro) wrap.appendChild(el('p', 'rules__intro', rules.intro));
+    wrap.appendChild(list);
+    els.rulesRoot.replaceChildren(wrap);
   }
 
   /* ---------- Render ---------- */
   function render() {
     renderTabs();
+    renderSite();
     const rules = state.category === RULES_TAB;
 
-    document.querySelector('.search').hidden = rules;
+    els.searchWrap.hidden = rules;
     els.viewToggle.hidden = rules;
     els.menuRoot.hidden = rules;
     els.rulesRoot.hidden = !rules;
@@ -465,12 +478,6 @@
   /* ---------- Search ---------- */
   function updateSearchClear() {
     els.searchClear.hidden = !els.search.value.trim();
-  }
-
-  function applySearch(value) {
-    state.query = value;
-    if (value) state.category = ALL_TAB;
-    render();
   }
 
   function clearSearch() {
@@ -522,11 +529,12 @@
   }
 
   function openLightbox(photo) {
-    const img = photo?.querySelector('img');
+    const img = photo.querySelector('img');
     if (!img) return;
     const box = ensureLightbox();
-    box.querySelector('.lightbox__img').src = img.dataset.full || img.src;
-    box.querySelector('.lightbox__img').alt = img.alt;
+    const big = box.querySelector('.lightbox__img');
+    big.src = img.dataset.full || img.src;
+    big.alt = img.alt;
     box.querySelector('.lightbox__cap').textContent = img.alt;
     lastFocus = document.activeElement;
     box.hidden = false;
@@ -536,42 +544,45 @@
 
   /* ---------- Events ---------- */
   function bindEvents() {
-    els.tabsList?.addEventListener('click', e => {
+    els.tabsList.addEventListener('click', e => {
       selectCategory(e.target.closest('.tabs__btn')?.dataset.cat);
     });
 
-    els.viewToggle?.addEventListener('click', e => {
+    els.viewToggle.addEventListener('click', e => {
       const btn = e.target.closest('[data-view]');
       if (!btn || btn.dataset.view === state.view) return;
       state.view = btn.dataset.view;
       els.viewToggle.querySelectorAll('[data-view]').forEach(b => {
-        const on = b === btn;
-        b.classList.toggle('is-active', on);
-        b.setAttribute('aria-pressed', String(on));
+        b.classList.toggle('is-active', b === btn);
+        b.setAttribute('aria-pressed', String(b === btn));
       });
       renderMenu();
     });
 
-    els.search?.addEventListener('input', e => {
+    els.search.addEventListener('input', e => {
       const { value } = e.target;
       updateSearchClear();
       clearTimeout(searchTimer);
-      searchTimer = setTimeout(() => applySearch(value), SEARCH_DEBOUNCE_MS);
+      searchTimer = setTimeout(() => {
+        state.query = value;
+        if (value) state.category = ALL_TAB;
+        render();
+      }, SEARCH_DEBOUNCE_MS);
     });
-    els.search?.addEventListener('keydown', e => {
+    els.search.addEventListener('keydown', e => {
       if (e.key === 'Escape') clearSearch();
       if (e.key === 'Enter') els.search.blur();      // hide the mobile keyboard
     });
-    els.searchClear?.addEventListener('click', clearSearch);
+    els.searchClear.addEventListener('click', clearSearch);
 
-    els.rulesRoot?.addEventListener('click', e => {
+    els.rulesRoot.addEventListener('click', e => {
       if (!e.target.closest('[data-rules-back]')) return;
       state.category = ALL_TAB;
       render();
       scrollToTabs();
     });
 
-    els.menuRoot?.addEventListener('click', e => {
+    els.menuRoot.addEventListener('click', e => {
       const photo = e.target.closest('[data-lightbox]');
       if (photo) {
         openLightbox(photo);
@@ -580,7 +591,7 @@
 
       const add = e.target.closest('[data-add]');
       if (add) {
-        const item = MENU.find(i => i.id === add.dataset.add);
+        const item = findItem(add.dataset.add);
         if (!item) return;
         window.OBLAKO_CART?.add(item);
         vibrate(14);
@@ -591,16 +602,15 @@
       const act = e.target.closest('[data-act]');
       if (act) {
         const { id } = act.dataset;
-        if (act.dataset.act === 'inc') window.OBLAKO_CART?.add(id);
+        if (act.dataset.act === 'inc') window.OBLAKO_CART?.add(findItem(id));
         else window.OBLAKO_CART?.setQty(id, cartQty(id) - 1);
         vibrate(10);
         refreshQty(id);
       }
     });
 
-    els.menuRoot?.addEventListener('keydown', e => {
-      if (e.key !== 'Enter' && e.key !== ' ') return;
-      if (!e.target.matches('[data-lightbox]')) return;
+    els.menuRoot.addEventListener('keydown', e => {
+      if ((e.key !== 'Enter' && e.key !== ' ') || !e.target.matches('[data-lightbox]')) return;
       e.preventDefault();
       openLightbox(e.target);
     });
@@ -609,77 +619,24 @@
   }
 
   /* ---------- Data loading ---------- */
-  function trackEvent(eventType, meta = {}) {
-    if (location.protocol === 'file:') return;
-    fetch(apiUrl('/api/analytics/event'), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ eventType, path: location.pathname, ...meta }),
-      keepalive: true,
-    }).catch(() => {});
-  }
-
-  function normalizeItem(raw) {
-    const item = { ...raw };
-    if (isBarItem(item)) {
-      item.noPhoto = true;
-      delete item.image;
-      delete item.imageFull;
-      return item;
-    }
-    if (dishWebp(item, 400)) {
-      item.image = dishWebp(item, 400);
-      item.imageFull = dishWebp(item, 800);
-    } else if (!item.image && typeof IMAGE_MAP !== 'undefined') {
-      item.image = IMAGE_MAP[item.photoId || item.id] || '';
-    }
-    return item;
-  }
-
-  // Accepts only data built from the same js/data.js revision — a not-yet-redeployed
-  // API or an old cache must never show outdated prices.
-  function applyMenuPayload(data) {
-    if (!data?.items?.length) return false;
-    if (LOCAL_REVISION && data.revision !== LOCAL_REVISION) return false;
-
-    // Skip re-render (and scroll jumps) when nothing changed
-    const signature = JSON.stringify([data.categories, data.items]);
-    if (signature === lastSignature) return false;
-    lastSignature = signature;
-
-    MENU.splice(0, MENU.length, ...data.items.map(normalizeItem));
-    if (data.categories?.length) CATEGORY_ORDER.splice(0, CATEGORY_ORDER.length, ...data.categories);
-
-    try {
-      localStorage.setItem(CACHE_KEY, JSON.stringify({
-        savedAt: Date.now(),
-        revision: data.revision || null,
-        categories: CATEGORY_ORDER,
-        items: MENU,
-      }));
-    } catch (_) { /* quota or private mode */ }
+  function applyData(nextMenu, nextSite) {
+    if (!Array.isArray(nextMenu?.items) || !Array.isArray(nextMenu?.categories)) return false;
+    const next = JSON.stringify([nextMenu, nextSite]);
+    if (next === signature) return false;          // nothing changed → no re-render, no scroll jump
+    signature = next;
+    menu = nextMenu;
+    site = nextSite;
+    try { localStorage.setItem(CACHE_KEY, next); } catch (_) { /* quota or private mode */ }
+    window.dispatchEvent(new CustomEvent('oblako-menu-change'));
     return true;
   }
 
-  function hydrateFromCache() {
-    try {
-      const data = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null');
-      if (!data || Date.now() - (data.savedAt || 0) > CACHE_TTL_MS) return false;
-      return applyMenuPayload(data);
-    } catch (_) {
-      return false;
-    }
-  }
-
-  async function fetchJson(url, timeoutMs) {
+  async function fetchJson(url) {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
     try {
-      const res = await fetch(`${url}?_=${Date.now()}`, {
-        signal: controller.signal,
-        cache: 'no-store',
-        headers: { Accept: 'application/json' },
-      });
+      // Unique URL + no-store: fresh data right after the admin publishes
+      const res = await fetch(`${url}?_=${Date.now()}`, { signal: controller.signal, cache: 'no-store' });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return await res.json();
     } finally {
@@ -687,27 +644,31 @@
     }
   }
 
-  async function loadMenuJson() {
+  async function loadData() {
     try {
-      if (applyMenuPayload(await fetchJson('data/menu.json', 8000))) render();
-    } catch (_) { /* bundled data.js stays */ }
+      const [m, s] = await Promise.all([fetchJson('data/menu.json'), fetchJson('data/site.json')]);
+      if (applyData(m, s)) render();
+    } catch (_) {
+      if (menu.items.length) return;              // cached menu stays on screen
+      els.menuRoot.replaceChildren();
+      renderEmpty('Меню не загрузилось', 'Проверьте интернет и попробуйте ещё раз', 'Повторить', () => {
+        els.empty.hidden = true;
+        showSkeletons();
+        loadData();
+      });
+    }
   }
 
-  async function loadMenuFromApi() {
-    if (location.protocol === 'file:') return;
-    const delays = [0, 2500, 6000];
-    for (let i = 0; i < delays.length; i++) {
-      if (delays[i]) await new Promise(r => setTimeout(r, delays[i]));
-      try {
-        const data = await fetchJson(apiUrl('/api/menu'), i === 0 ? 10000 : 25000);
-        if (applyMenuPayload(data)) render();
-        return;
-      } catch (_) { /* cold start — retry */ }
+  function hydrateFromCache() {
+    try {
+      const [m, s] = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null') || [];
+      return applyData(m, s);
+    } catch (_) {
+      return false;
     }
   }
 
   function showSkeletons() {
-    if (MENU.length) return;
     const grid = el('div', 'grid');
     for (let i = 0; i < 6; i++) {
       const card = el('div', 'card card--skeleton');
@@ -720,28 +681,25 @@
   }
 
   /* ---------- Init ---------- */
-  MENU.splice(0, MENU.length, ...MENU.map(normalizeItem));
-
-  window.OBLAKO = Object.assign(window.OBLAKO || {}, {
+  window.OBLAKO = {
     openRules,
     goHome,
     scrollToTabs,
-  });
+    findItem,
+    isReady: () => menu.items.length > 0,
+    servicePercent: () => Number(site?.servicePercent ?? 15),
+  };
 
   bindEvents();
   showSkeletons();
   hydrateFromCache();
   render();
-
-  loadMenuJson().then(() => {
-    loadMenuFromApi();
-    trackEvent('page_view');
-  });
+  loadData();
 
   setInterval(() => {
-    if (document.visibilityState !== 'visible') return;
-    fetchJson(apiUrl('/api/menu'), 12000)
-      .then(data => { if (applyMenuPayload(data)) render(); })
-      .catch(() => {});
+    if (document.visibilityState === 'visible') loadData();
   }, POLL_MS);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') loadData();
+  });
 })();

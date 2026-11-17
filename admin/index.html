@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="referrer" content="no-referrer">
+  <meta name="theme-color" content="#0d0d0d">
+  <title>OBLAKO — Админка</title>
+  <link rel="icon" href="../image/favicon.png" type="image/png">
+  <link rel="stylesheet" href="admin.css?v=1">
+</head>
+<body>
+
+  <!-- ===== Login ===== -->
+  <main class="login" id="view-login">
+    <img class="login__logo" src="../image/logo.webp" alt="OBLAKO" width="360" height="217">
+    <h1 class="login__title">Вход в админку</h1>
+    <form class="form" id="login-form" novalidate>
+      <label class="field">
+        <span class="field__label">Логин</span>
+        <input class="field__input" name="user" autocomplete="username" autocapitalize="none" spellcheck="false" required>
+      </label>
+      <label class="field">
+        <span class="field__label">Пароль</span>
+        <input class="field__input" name="password" type="password" autocomplete="current-password" required>
+      </label>
+      <label class="field" id="token-field" hidden>
+        <span class="field__label">Ключ GitHub — нужен один раз на этом телефоне</span>
+        <input class="field__input" name="token" type="password" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="github_pat_…">
+        <span class="field__hint">Ключ хранится только на этом устройстве в зашифрованном виде.</span>
+      </label>
+      <p class="form__error" id="login-error" role="alert" hidden></p>
+      <button class="btn btn--primary btn--block" type="submit" id="login-submit">Войти</button>
+    </form>
+  </main>
+
+  <!-- ===== App ===== -->
+  <div class="app" id="view-app" hidden>
+    <header class="topbar">
+      <div class="topbar__title">OBLAKO · админка</div>
+      <span class="status" id="status" data-state="idle">Загрузка…</span>
+      <a class="btn btn--ghost btn--small" href="../" target="_blank" rel="noopener">Сайт</a>
+      <button class="btn btn--ghost btn--small" type="button" id="logout">Выйти</button>
+    </header>
+
+    <nav class="tabs" aria-label="Разделы админки">
+      <button class="tabs__btn is-active" type="button" data-tab="menu">Меню</button>
+      <button class="tabs__btn" type="button" data-tab="cats">Разделы</button>
+      <button class="tabs__btn" type="button" data-tab="contacts">Контакты</button>
+      <button class="tabs__btn" type="button" data-tab="texts">Тексты</button>
+      <button class="tabs__btn" type="button" data-tab="history">История</button>
+    </nav>
+
+    <!-- Menu -->
+    <section class="panel" data-panel="menu">
+      <div class="toolbar">
+        <input class="field__input" type="search" id="dish-search" placeholder="Поиск блюда…" aria-label="Поиск блюда" autocomplete="off">
+        <select class="field__input" id="dish-filter" aria-label="Раздел"></select>
+        <button class="btn btn--primary" type="button" id="dish-add">+ Новое блюдо</button>
+      </div>
+      <div class="list" id="dish-list"></div>
+    </section>
+
+    <!-- Categories -->
+    <section class="panel" data-panel="cats" hidden>
+      <p class="panel__hint">Порядок разделов — как на сайте. «Без фото» — компактные карточки (напитки).</p>
+      <div class="list" id="cat-list"></div>
+      <form class="toolbar" id="cat-add-form">
+        <input class="field__input" name="name" placeholder="Название нового раздела" aria-label="Название нового раздела" required>
+        <button class="btn btn--primary" type="submit">Добавить раздел</button>
+      </form>
+    </section>
+
+    <!-- Contacts -->
+    <section class="panel form" data-panel="contacts" hidden>
+      <p class="panel__hint">Заполненные контакты появятся внизу сайта, телефон — кнопкой «Позвонить».</p>
+      <label class="field"><span class="field__label">Телефон</span>
+        <input class="field__input" type="tel" data-bind="contacts.phone" placeholder="+7 700 000 00 00" autocomplete="off"></label>
+      <label class="field"><span class="field__label">WhatsApp (номер)</span>
+        <input class="field__input" type="tel" data-bind="contacts.whatsapp" placeholder="+7 700 000 00 00" autocomplete="off"></label>
+      <label class="field"><span class="field__label">Instagram</span>
+        <input class="field__input" data-bind="contacts.instagram" placeholder="@oblako" autocapitalize="none" autocomplete="off"></label>
+      <label class="field"><span class="field__label">Адрес</span>
+        <input class="field__input" data-bind="contacts.address" autocomplete="off"></label>
+      <label class="field"><span class="field__label">Ссылка на карту (2ГИС, Google, Яндекс)</span>
+        <input class="field__input" type="url" data-bind="contacts.mapUrl" placeholder="https://…" autocapitalize="none" autocomplete="off"></label>
+      <label class="field"><span class="field__label">Режим работы</span>
+        <textarea class="field__input" rows="2" data-bind="contacts.hours" placeholder="Ежедневно 12:00–02:00"></textarea></label>
+    </section>
+
+    <!-- Texts -->
+    <section class="panel form" data-panel="texts" hidden>
+      <label class="field"><span class="field__label">Текст под логотипом на главной</span>
+        <textarea class="field__input" rows="3" data-bind="home.intro" placeholder="Пусто — блок не показывается"></textarea></label>
+      <label class="field"><span class="field__label">Обслуживание, %</span>
+        <input class="field__input" inputmode="numeric" data-bind="servicePercent" data-type="int"></label>
+
+      <h2 class="panel__title">Акции и события</h2>
+      <div class="list" id="promo-list"></div>
+      <button class="btn btn--ghost btn--block" type="button" id="promo-add">+ Добавить акцию</button>
+
+      <h2 class="panel__title">Правила заведения</h2>
+      <label class="field"><span class="field__label">Вступление</span>
+        <textarea class="field__input" rows="2" data-bind="rules.intro"></textarea></label>
+      <div class="list" id="rules-list"></div>
+      <button class="btn btn--ghost btn--block" type="button" id="rule-add">+ Добавить блок правил</button>
+    </section>
+
+    <!-- History -->
+    <section class="panel" data-panel="history" hidden>
+      <button class="btn btn--danger btn--block" type="button" id="undo">Отменить последнее изменение</button>
+      <p class="panel__hint">Отменяется последнее сохранение из админки. Можно нажимать несколько раз.</p>
+      <div class="list" id="history-list"></div>
+    </section>
+
+    <div class="savebar">
+      <span class="savebar__text" id="dirty-text">Изменений нет</span>
+      <button class="btn btn--primary" type="button" id="save" disabled>Сохранить</button>
+    </div>
+  </div>
+
+  <!-- ===== Dish editor ===== -->
+  <div class="sheet" id="editor" role="dialog" aria-modal="true" aria-labelledby="editor-title" hidden>
+    <form class="sheet__panel form" id="dish-form" novalidate>
+      <header class="sheet__head">
+        <button class="btn btn--ghost btn--small" type="button" data-editor-cancel>Отмена</button>
+        <h2 class="sheet__title" id="editor-title">Блюдо</h2>
+        <button class="btn btn--primary btn--small" type="submit">Готово</button>
+      </header>
+
+      <div class="photo">
+        <img class="photo__img" id="photo-preview" alt="" hidden>
+        <span class="photo__empty" id="photo-empty">Нет фото</span>
+        <div class="photo__actions">
+          <label class="btn btn--ghost btn--small">
+            Загрузить фото
+            <input class="visually-hidden" type="file" accept="image/*" id="photo-input">
+          </label>
+          <button class="btn btn--ghost btn--small" type="button" id="photo-remove">Убрать фото</button>
+        </div>
+      </div>
+
+      <label class="field"><span class="field__label">Название *</span>
+        <input class="field__input" name="name" required autocomplete="off"></label>
+      <label class="field"><span class="field__label">Раздел *</span>
+        <select class="field__input" name="cat" required></select></label>
+      <label class="field"><span class="field__label">Подраздел (для напитков)</span>
+        <input class="field__input" name="subcat" autocomplete="off"></label>
+      <label class="field"><span class="field__label">Цена, ₸</span>
+        <input class="field__input" name="price" inputmode="numeric" autocomplete="off" placeholder="Пусто — «по запросу»"></label>
+      <label class="field"><span class="field__label">Вес / порция / объём</span>
+        <input class="field__input" name="volume" placeholder="300 г, 0,5 л" autocomplete="off"></label>
+      <label class="field"><span class="field__label">Состав</span>
+        <textarea class="field__input" name="desc" rows="3" placeholder="Через запятую"></textarea></label>
+      <label class="field"><span class="field__label">Описание</span>
+        <textarea class="field__input" name="about" rows="2"></textarea></label>
+
+      <details class="more">
+        <summary class="more__title">Вторая цена (например, 0,5 л / 1 л)</summary>
+        <label class="field"><span class="field__label">Подпись первой цены</span>
+          <input class="field__input" name="priceLabel" autocomplete="off"></label>
+        <label class="field"><span class="field__label">Вторая цена, ₸</span>
+          <input class="field__input" name="price2" inputmode="numeric" autocomplete="off"></label>
+        <label class="field"><span class="field__label">Подпись второй цены</span>
+          <input class="field__input" name="price2Label" autocomplete="off"></label>
+      </details>
+
+      <fieldset class="field">
+        <legend class="field__label">Метка на карточке</legend>
+        <div class="segmented">
+          <label class="segmented__item"><input type="radio" name="badge" value=""> <span>Нет</span></label>
+          <label class="segmented__item"><input type="radio" name="badge" value="new"> <span>Новинка</span></label>
+          <label class="segmented__item"><input type="radio" name="badge" value="hit"> <span>Хит</span></label>
+        </div>
+      </fieldset>
+
+      <label class="switch">
+        <input type="checkbox" name="stop">
+        <span class="switch__track" aria-hidden="true"></span>
+        <span>Нет в наличии (стоп-лист)</span>
+      </label>
+
+      <div class="sheet__row">
+        <button class="btn btn--ghost" type="button" data-move="-1">↑ Выше</button>
+        <button class="btn btn--ghost" type="button" data-move="1">↓ Ниже</button>
+      </div>
+      <p class="form__error" id="dish-error" role="alert" hidden></p>
+      <button class="btn btn--danger btn--block" type="button" id="dish-delete">Удалить блюдо</button>
+    </form>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="admin.js?v=1" defer></script>
+</body>
+</html>

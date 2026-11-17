@@ -1,22 +1,19 @@
 /* OBLAKO service worker
-   - app shell & menu data: network first, cache as offline fallback (prices are always fresh)
-   - dish photos: cache first (URLs carry ?v=PHOTO_VER, so a new photo = a new URL) */
-const VERSION = 'v11';
+   - app shell & data/*.json: network first, cache as offline fallback (prices are always fresh)
+   - dish photos: cache first (the admin gives every new photo a new file name)
+   - /admin/ is never intercepted */
+const VERSION = 'v12';
 const CACHE_STATIC = `oblako-static-${VERSION}`;
 const CACHE_IMAGES = `oblako-images-${VERSION}`;
 
 const PRECACHE = [
   './',
   './index.html',
-  './css/style.css?v=11',
-  './css/cart.css?v=11',
-  './js/config.js?v=11',
-  './js/data.js?v=11',
-  './js/image-map.js?v=11',
-  './js/rules.js?v=11',
-  './js/app.js?v=11',
-  './js/cart.js?v=11',
-  './js/ui.js?v=11',
+  './css/style.css?v=12',
+  './css/cart.css?v=12',
+  './js/app.js?v=12',
+  './js/cart.js?v=12',
+  './js/ui.js?v=12',
   './image/logo.webp',
   './image/favicon.png',
   './manifest.webmanifest',
@@ -51,8 +48,8 @@ async function networkFirst(req) {
     if (res.ok) cache.put(req, res.clone());
     return res;
   } catch (err) {
-    // menu.json is requested with a cache-busting query — match it without one offline
-    const cached = await cache.match(req, { ignoreSearch: req.url.includes('/data/menu.json') });
+    // data/*.json is requested with a cache-busting query — match it without one offline
+    const cached = await cache.match(req, { ignoreSearch: req.url.includes('/data/') });
     if (cached) return cached;
     throw err;
   }
@@ -71,7 +68,7 @@ self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
-  if (url.origin !== self.location.origin) return;
+  if (url.origin !== self.location.origin || url.pathname.includes('/admin/')) return;
 
   event.respondWith(isImage(url) ? cacheFirst(req) : networkFirst(req));
 });

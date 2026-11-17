@@ -3,7 +3,6 @@
   'use strict';
 
   const STORAGE_KEY = 'oblako-cart-v1';
-  const SERVICE_RATE = 0.15;
   const TOAST_MS = 1800;
 
   /** @type {{id:string,name:string,price:number,image?:string,qty:number}[]} */
@@ -32,10 +31,11 @@
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
 
-  const findMenuItem = (id) => (typeof MENU !== 'undefined' ? MENU : []).find(i => i.id === id);
+  const findMenuItem = (id) => window.OBLAKO?.findItem?.(id);
+  const servicePercent = () => window.OBLAKO?.servicePercent?.() ?? 15;
   const count = () => lines.reduce((s, l) => s + l.qty, 0);
   const subtotal = () => lines.reduce((s, l) => s + l.price * l.qty, 0);
-  const service = () => Math.round(subtotal() * SERVICE_RATE);
+  const service = () => Math.round(subtotal() * servicePercent() / 100);
   const qty = (id) => lines.find(l => l.id === id)?.qty || 0;
 
   function toast(msg) {
@@ -46,13 +46,19 @@
     window.dispatchEvent(new CustomEvent('oblako-cart-change'));
   }
 
-  // Lines saved before a price update must show the current menu price
+  // Lines saved before a menu update must show the current price; removed or
+  // stopped dishes drop out. Runs only after the menu has loaded.
+  let menuReady = false;
+
   function syncWithMenu() {
+    if (!menuReady) return;
     let changed = false;
     lines = lines.filter(line => {
       const item = findMenuItem(line.id);
-      if (!item) return typeof MENU === 'undefined' || !MENU.length;   // dish removed from menu
-      if (item.price == null) return false;
+      if (!item || item.stop || item.price == null) {
+        changed = true;
+        return false;
+      }
       if (line.price !== item.price || line.name !== item.name) {
         line.price = item.price;
         line.name = item.name;
@@ -90,7 +96,7 @@
         id: item.id,
         name: item.name,
         price: item.price,
-        image: item.image || '',
+        image: item.photo ? `image/dishes/w400/${item.photo}` : '',
         qty: Math.max(1, amount),
       });
     }
@@ -206,7 +212,7 @@
     return `
       <div class="cart-totals">
         <div class="cart-totals__row"><span>Сумма блюд</span><strong>${money(subtotal())}</strong></div>
-        <div class="cart-totals__row"><span>Обслуживание 15%</span><strong>${money(service())}</strong></div>
+        <div class="cart-totals__row"><span>Обслуживание ${servicePercent()}%</span><strong>${money(service())}</strong></div>
         <div class="cart-totals__row cart-totals__row--total"><span>Итого</span><strong>${money(subtotal() + service())}</strong></div>
       </div>`;
   }
@@ -254,7 +260,7 @@
     body.innerHTML = lines.map(lineHtml).join('');
     foot.innerHTML = `
       ${totalsHtml()}
-      <p class="cart-note">Покажите заказ официанту или хостес. Обслуживание 15% уже включено в итоговую сумму.</p>
+      <p class="cart-note">Покажите заказ официанту или хостес. Обслуживание ${servicePercent()}% уже включено в итоговую сумму.</p>
       <div class="cart-actions">
         <button type="button" class="cart-btn cart-btn--ghost" data-act="clear">Очистить</button>
         <button type="button" class="cart-btn cart-btn--gold" data-act="ready">Готово к подаче</button>
@@ -264,13 +270,16 @@
   /* ---------- Public API ---------- */
   window.OBLAKO_CART = { add, open, close, clear, qty, setQty };
 
-  // Menu data may arrive later (menu.json / API) — re-check prices then
-  window.addEventListener('load', () => {
+  // Menu data arrives asynchronously (cache, then network) — re-check prices each time
+  window.addEventListener('oblako-menu-change', () => {
+    menuReady = true;
     syncWithMenu();
-    renderDockBadge();
+    render();
     notify();
   });
 
+  menuReady = Boolean(window.OBLAKO?.isReady?.());   // app.js may have rendered from cache already
+  syncWithMenu();
   renderDockBadge();
   notify();   // app.js rendered cards before the cart existed — sync their qty controls
 })();

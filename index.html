@@ -23,15 +23,15 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Manrope:wght@400;600;700&display=swap">
-  <link rel="dns-prefetch" href="https://oblako-lppn.onrender.com">
-  <link rel="stylesheet" href="css/style.css?v=11">
-  <link rel="stylesheet" href="css/cart.css?v=11">
+  <link rel="stylesheet" href="css/style.css?v=12">
+  <link rel="stylesheet" href="css/cart.css?v=12">
 </head>
 <body>
 
   <header class="site-header">
     <img class="site-header__logo" src="image/logo.webp" alt="OBLAKO" width="360" height="217" decoding="async" fetchpriority="high">
-    <div class="search">
+    <p class="site-header__intro" id="home-intro" hidden></p>
+    <div class="search" id="search-wrap">
       <input class="search__input" type="search" id="search" placeholder="Поиск блюда или напитка…" aria-label="Поиск по меню" autocomplete="off" enterkeyhint="search">
       <button class="search__clear" type="button" id="search-clear" aria-label="Очистить поиск" hidden>&times;</button>
     </div>
@@ -50,12 +50,14 @@
   </nav>
 
   <main class="main">
+    <section class="promos" id="promos" aria-label="Акции и события" hidden></section>
     <div id="menu-root"></div>
     <div id="rules-root" hidden></div>
     <div class="empty" id="empty-state" hidden></div>
   </main>
 
   <footer class="site-footer">
+    <address class="contacts" id="contacts" hidden></address>
     <p>© 2026 OBLAKO — Все права защищены</p>
     <p class="site-footer__dev">Разработано<span class="site-footer__dev-name">hmeeti</span></p>
   </footer>
@@ -75,18 +77,18 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M6 4h9l3 3v13H6z"/><path d="M15 4v4h4"/><path d="M9 12h6M9 16h6"/></svg>
       <span>Правила</span>
     </button>
+    <a class="dock__btn" id="dock-call" href="#" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2z"/></svg>
+      <span>Позвонить</span>
+    </a>
     <button class="dock__btn dock__btn--accent" type="button" data-action="cart">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M6 7h15l-1.5 9h-12z"/><path d="M6 7L5 3H2"/><circle cx="9" cy="20" r="1.4"/><circle cx="17" cy="20" r="1.4"/></svg>
       <span>Корзина</span>
     </button>
   </nav>
 
-  <script src="js/config.js?v=11" defer></script>
-  <script src="js/data.js?v=11" defer></script>
-  <script src="js/image-map.js?v=11" defer></script>
-  <script src="js/rules.js?v=11" defer></script>
-  <script src="js/app.js?v=11" defer></script>
-  <script src="js/cart.js?v=11" defer></script>
-  <script src="js/ui.js?v=11" defer></script>
+  <script src="js/app.js?v=12" defer></script>
+  <script src="js/cart.js?v=12" defer></script>
+  <script src="js/ui.js?v=12" defer></script>
 </body>
 </html>
