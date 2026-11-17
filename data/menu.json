@@ -1,5 +1,5 @@
 {
- "updatedAt": "2026-11-17T18:47:34.000Z",
+ "updatedAt": "2026-11-17T18:20:30.000Z",
  "categories": [
   {
    "name": "Салаты"
@@ -94,13 +94,7 @@
    "cat": "Салаты",
    "name": "Греческий салат",
    "price": 2590,
-   "desc": "Помидоры, огурцы, оливки, маслины, сыр фетакса, болгарский перец, красный лук.",
-   "photo": "sl7-c1.jpg",
-   "photoCredit": {
-    "author": "cyclonebill",
-    "license": "CC BY-SA 2.0",
-    "url": "https://commons.wikimedia.org/wiki/File:Flickr_-_cyclonebill_-_Gr%C3%A6sk_salat.jpg"
-   }
+   "desc": "Помидоры, огурцы, оливки, маслины, сыр фетакса, болгарский перец, красный лук."
   },
   {
    "id": "sl4",
@@ -149,13 +143,7 @@
    "cat": "Закуски под водочку",
    "name": "Сельдь под шубой",
    "price": 3690,
-   "desc": "Сельдь, картофель, морковь, свёкла, яйцо, майонез.",
-   "photo": "zv0-c1.jpg",
-   "photoCredit": {
-    "author": "Zserghei",
-    "license": "Public domain",
-    "url": "https://commons.wikimedia.org/wiki/File:Selidi_pod_shuboi.jpg"
-   }
+   "desc": "Сельдь, картофель, морковь, свёкла, яйцо, майонез."
   },
   {
    "id": "zv1",
@@ -176,13 +164,7 @@
    "cat": "Закуски под водочку",
    "name": "Русская закуска",
    "price": 3390,
-   "desc": "Сельдь, солёные огурцы, картофель, квашеная капуста, красный лук.",
-   "photo": "zv3-c1.jpg",
-   "photoCredit": {
-    "author": "Jessica from Hove, United Kingdom",
-    "license": "CC BY 2.0",
-    "url": "https://commons.wikimedia.org/wiki/File:Herring_with_sour_cream_and_onion_and_fried_potato.jpg"
-   }
+   "desc": "Сельдь, солёные огурцы, картофель, квашеная капуста, красный лук."
   },
   {
    "id": "s5",
@@ -196,26 +178,14 @@
    "cat": "Первые блюда",
    "name": "Рамен с курицей",
    "price": 2790,
-   "desc": "Рамен, куриное филе, ореховый соус, шампиньоны, чука салат, яйцо.",
-   "photo": "s0-c1.jpg",
-   "photoCredit": {
-    "author": "Andy Li",
-    "license": "CC0",
-    "url": "https://commons.wikimedia.org/wiki/File:Chicken_miso_butter_ramen_-_Goemon_Ramen_Bar.jpg"
-   }
+   "desc": "Рамен, куриное филе, ореховый соус, шампиньоны, чука салат, яйцо."
   },
   {
    "id": "s1",
    "cat": "Первые блюда",
    "name": "Рамен с телятиной",
    "price": 3090,
-   "desc": "Рамен, мясо телятины, ореховый соус, шампиньоны, чука салат, яйцо.",
-   "photo": "s1-c1.jpg",
-   "photoCredit": {
-    "author": "Guilhem Vellut from Annecy, France",
-    "license": "CC BY 2.0",
-    "url": "https://commons.wikimedia.org/wiki/File:Beef_Miso_Ramen_@_Miso_Matador_(11998075584).jpg"
-   }
+   "desc": "Рамен, мясо телятины, ореховый соус, шампиньоны, чука салат, яйцо."
   },
   {
    "id": "s6",
@@ -229,13 +199,7 @@
    "cat": "Первые блюда",
    "name": "Том ям из морепродуктов",
    "price": 4290,
-   "desc": "Креветки тигровые, мидии, кальмар, осьминог, сёмга, кокосовое молоко, лемонграсс, каффир-лайм, черри, шпинат.",
-   "photo": "s2-c1.jpg",
-   "photoCredit": {
-    "author": "P1898",
-    "license": "CC BY 4.0",
-    "url": "https://commons.wikimedia.org/wiki/File:Tom_Yum_OHO_Nam_Kon_2026-09-25_authentic_Thai_food_21c.jpg"
-   }
+   "desc": "Креветки тигровые, мидии, кальмар, осьминог, сёмга, кокосовое молоко, лемонграсс, каффир-лайм, черри, шпинат."
   },
   {
    "id": "s7",
@@ -249,13 +213,7 @@
    "cat": "Первые блюда",
    "name": "Солянка(сборная)",
    "price": 2790,
-   "desc": "Копчёная говядина, копчёные сосиски, маслины, солёные огурцы, копчёная курица.",
-   "photo": "s4-c1.jpg",
-   "photoCredit": {
-    "author": "Benreis",
-    "license": "CC BY-SA 4.0",
-    "url": "https://commons.wikimedia.org/wiki/File:Soljanka_Prijut12_Oberwiesenthal.jpg"
-   }
+   "desc": "Копчёная говядина, копчёные сосиски, маслины, солёные огурцы, копчёная курица."
   },
   {
    "id": "s8",
@@ -268,13 +226,7 @@
    "id": "s3",
    "cat": "Первые блюда",
    "name": "Чечевичный крем-суп",
-   "price": 1990,
-   "photo": "s3-c1.jpg",
-   "photoCredit": {
-    "author": "E4024",
-    "license": "CC BY-SA 4.0",
-    "url": "https://commons.wikimedia.org/wiki/File:Lentil_cream.jpg"
-   }
+   "price": 1990
   },
   {
    "id": "pa0",
@@ -303,26 +255,14 @@
    "cat": "Паста",
    "name": "Спагетти болоньезе",
    "price": 2490,
-   "desc": "Спагетти, фарш болоньезе, сыр пармезан.",
-   "photo": "pa2-c1.jpg",
-   "photoCredit": {
-    "author": "HaJunkiyada",
-    "license": "CC BY-SA 4.0",
-    "url": "https://commons.wikimedia.org/wiki/File:Liat_Portal_for_Foodie_Disorder_-_Spaghetti_bolognese_with_peas.jpg"
-   }
+   "desc": "Спагетти, фарш болоньезе, сыр пармезан."
   },
   {
    "id": "m6",
    "cat": "Вторые блюда",
    "name": "Куриный шницель",
    "price": 2790,
-   "desc": "Шницель, картофель фри, моцарелла, пармезан.",
-   "photo": "m6-c1.jpg",
-   "photoCredit": {
-    "author": "Alpha",
-    "license": "CC BY-SA 2.0",
-    "url": "https://commons.wikimedia.org/wiki/File:Chicken_schnitzel_and_chips_with_jaeger_gravy.jpg"
-   }
+   "desc": "Шницель, картофель фри, моцарелла, пармезан."
   },
   {
    "id": "m7",
@@ -336,39 +276,21 @@
    "cat": "Вторые блюда",
    "name": "Курица в кисло-сладком соусе",
    "price": 2690,
-   "desc": "Куриное филе, припущенный рис, кисло-сладкий соус.",
-   "photo": "m8-c1.jpg",
-   "photoCredit": {
-    "author": "Andy Li",
-    "license": "CC0",
-    "url": "https://commons.wikimedia.org/wiki/File:Dinner_at_Unithai_2023-08-17.jpg"
-   }
+   "desc": "Куриное филе, припущенный рис, кисло-сладкий соус."
   },
   {
    "id": "m9",
    "cat": "Вторые блюда",
    "name": "Каурдак из конины",
    "price": 3490,
-   "desc": "Конина, картофель, лук.",
-   "photo": "m9-c1.jpg",
-   "photoCredit": {
-    "author": "Rio Murr from Minsk, Belarus",
-    "license": "CC BY-SA 2.0",
-    "url": "https://commons.wikimedia.org/wiki/File:Kazakh_quwyrdaq.jpg"
-   }
+   "desc": "Конина, картофель, лук."
   },
   {
    "id": "m10",
    "cat": "Вторые блюда",
    "name": "Каурдак из баранины",
    "price": 3390,
-   "desc": "Баранина, картофель, лук.",
-   "photo": "m10-c1.jpg",
-   "photoCredit": {
-    "author": "Rio Murr from Minsk, Belarus",
-    "license": "CC BY-SA 2.0",
-    "url": "https://commons.wikimedia.org/wiki/File:Kazakh_quwyrdaq.jpg"
-   }
+   "desc": "Баранина, картофель, лук."
   },
   {
    "id": "m0",
@@ -405,13 +327,7 @@
    "cat": "Вторые блюда",
    "name": "Форель на гриле",
    "price": 5290,
-   "desc": "Форель, овощное рагу, сливочный соус.",
-   "photo": "m2-c1.jpg",
-   "photoCredit": {
-    "author": "Bdx",
-    "license": "CC0",
-    "url": "https://commons.wikimedia.org/wiki/File:Grilled_trout,_Restaurant_Trofta,_Istog,_2025.jpg"
-   }
+   "desc": "Форель, овощное рагу, сливочный соус."
   },
   {
    "id": "m3",
@@ -426,26 +342,14 @@
    "cat": "Вторые блюда",
    "name": "Ассорти колбасок",
    "price": 5290,
-   "desc": "Говяжьи, куриные, бараньи.",
-   "photo": "m13-c1.jpg",
-   "photoCredit": {
-    "author": "N509FZ",
-    "license": "CC BY-SA 4.0",
-    "url": "https://commons.wikimedia.org/wiki/File:Grilled_sausage_platter_at_Byone,_Guang%27anmen_(20210528185108).jpg"
-   }
+   "desc": "Говяжьи, куриные, бараньи."
   },
   {
    "id": "m14",
    "cat": "Вторые блюда",
    "name": "Хинкали",
    "price": 2790,
-   "desc": "Фарш (баранина, говядина), лук, зелень, специи.",
-   "photo": "m14-c1.jpg",
-   "photoCredit": {
-    "author": "Francesc Fort",
-    "license": "CC BY-SA 4.0",
-    "url": "https://commons.wikimedia.org/wiki/File:Batumi_-_Kinkali.jpg"
-   }
+   "desc": "Фарш (баранина, говядина), лук, зелень, специи."
   },
   {
    "id": "co0",
@@ -480,13 +384,7 @@
    "cat": "Блюда на компанию",
    "name": "Мясной сет",
    "price": 25990,
-   "desc": "На 5–6 персон. Рибай, тибон, куриное филе, ассорти колбасок, овощи на гриле, картофельные дольки, соус.",
-   "photo": "co3-c1.jpg",
-   "photoCredit": {
-    "author": "Minja Klarić",
-    "license": "CC BY-SA 4.0",
-    "url": "https://commons.wikimedia.org/wiki/File:Mixed_meat_platter_in_a_restaurant_in_Mostar_-_Bosnia_and_Herzegovina_(2025)-bs.jpg"
-   }
+   "desc": "На 5–6 персон. Рибай, тибон, куриное филе, ассорти колбасок, овощи на гриле, картофельные дольки, соус."
   },
   {
    "id": "co4",
@@ -499,61 +397,31 @@
    "id": "sh0",
    "cat": "Кавказские шашлыки",
    "name": "Баранина мякоть",
-   "price": 3490,
-   "photo": "sh0-c1.jpg",
-   "photoCredit": {
-    "author": "BeshevI",
-    "license": "CC BY-SA 4.0",
-    "url": "https://commons.wikimedia.org/wiki/File:14T_20240408_20.jpg"
-   }
+   "price": 3490
   },
   {
    "id": "sh1",
    "cat": "Кавказские шашлыки",
    "name": "Бараньи ребрышки",
-   "price": 4300,
-   "photo": "sh1-c1.jpg",
-   "photoCredit": {
-    "author": "E4024",
-    "license": "CC BY-SA 4.0",
-    "url": "https://commons.wikimedia.org/wiki/File:Kaburga_a_la_parrilla.jpg"
-   }
+   "price": 4300
   },
   {
    "id": "sh15",
    "cat": "Кавказские шашлыки",
    "name": "Кавказский шашлык с костями",
-   "price": 3290,
-   "photo": "sh15-c1.jpg",
-   "photoCredit": {
-    "author": "Игоревич",
-    "license": "Public domain",
-    "url": "https://commons.wikimedia.org/wiki/File:Shashlik.jpg"
-   }
+   "price": 3290
   },
   {
    "id": "sh7",
    "cat": "Кавказские шашлыки",
    "name": "Люля кебаб по-азербайджански",
-   "price": 2890,
-   "photo": "sh7-c1.jpg",
-   "photoCredit": {
-    "author": "TarPas",
-    "license": "CC BY-SA 4.0",
-    "url": "https://commons.wikimedia.org/wiki/File:Evd%C9%99_l%C3%BCl%C9%99_kabab_-_Dondurma_%C3%A7ubuqlar%C4%B1nda.jpg"
-   }
+   "price": 2890
   },
   {
    "id": "sh16",
    "cat": "Кавказские шашлыки",
    "name": "Бастырма из говядины по-азербайджански",
-   "price": 3690,
-   "photo": "sh16-c1.jpg",
-   "photoCredit": {
-    "author": "RosarioVanTulpe",
-    "license": "Public domain",
-    "url": "https://commons.wikimedia.org/wiki/File:Basturma_or_Pastroma_from_Armenia_1.JPG"
-   }
+   "price": 3690
   },
   {
    "id": "sh17",
@@ -565,13 +433,7 @@
    "id": "sh18",
    "cat": "Кавказские шашлыки",
    "name": "Куриное филе",
-   "price": 2290,
-   "photo": "sh18-c1.jpg",
-   "photoCredit": {
-    "author": "Spacekid",
-    "license": "CC0",
-    "url": "https://commons.wikimedia.org/wiki/File:%D0%A8%D0%B0%D1%88%D0%BB%D1%8B%D0%BA_%D0%B8%D0%B7_%D0%BA%D1%83%D1%80%D0%B8%D0%BD%D1%8B%D1%85_%D0%BD%D0%BE%D0%B6%D0%B5%D0%BA.jpeg"
-   }
+   "price": 2290
   },
   {
    "id": "sh8",
@@ -583,25 +445,13 @@
    "id": "sh9",
    "cat": "Кавказские шашлыки",
    "name": "Куриные крылышки",
-   "price": 2090,
-   "photo": "sh9-c1.jpg",
-   "photoCredit": {
-    "author": "Amin",
-    "license": "CC BY-SA 4.0",
-    "url": "https://commons.wikimedia.org/wiki/File:Skewer_with_marinated_chicken_wings_bbq_barbeque.jpg"
-   }
+   "price": 2090
   },
   {
    "id": "sh12",
    "cat": "Кавказские шашлыки",
    "name": "Шампиньоны",
-   "price": 1690,
-   "photo": "sh12-c1.jpg",
-   "photoCredit": {
-    "author": "Juan Emilio Prades Bel",
-    "license": "CC BY-SA 4.0",
-    "url": "https://commons.wikimedia.org/wiki/File:Brocheta_de_Setas,_comida_japonesa.jpg"
-   }
+   "price": 1690
   },
   {
    "id": "sh13",
@@ -613,13 +463,7 @@
    "id": "sh19",
    "cat": "Кавказские шашлыки",
    "name": "Баклажаны",
-   "price": 1690,
-   "photo": "sh19-c1.jpg",
-   "photoCredit": {
-    "author": "Miansari66",
-    "license": "CC0",
-    "url": "https://commons.wikimedia.org/wiki/File:Grilled_Brinjal.JPG"
-   }
+   "price": 1690
   },
   {
    "id": "sh20",
@@ -649,61 +493,31 @@
    "id": "td3",
    "cat": "Мясо из тандыра",
    "name": "Баранья нога из тандыра по-азербайджански",
-   "price": 25000,
-   "photo": "td3-c1.jpg",
-   "photoCredit": {
-    "author": "Roger469",
-    "license": "CC BY-SA 4.0",
-    "url": "https://commons.wikimedia.org/wiki/File:Agnello_arrosto.03.con_patate,verdure_e_aromi_cotto.jpg"
-   }
+   "price": 25000
   },
   {
    "id": "td4",
    "cat": "Мясо из тандыра",
    "name": "Курица из тандыра",
-   "price": 5990,
-   "photo": "td4-c1.jpg",
-   "photoCredit": {
-    "author": "Miansari66",
-    "license": "CC0",
-    "url": "https://commons.wikimedia.org/wiki/File:Tandoori_Chicken_1.JPG"
-   }
+   "price": 5990
   },
   {
    "id": "hm0",
    "cat": "Стэйки",
    "name": "Рибай говядина",
-   "price": 4990,
-   "photo": "hm0-c1.jpg",
-   "photoCredit": {
-    "author": "Bonnachoven",
-    "license": "CC0",
-    "url": "https://commons.wikimedia.org/wiki/File:Longhorn_Steakhouse_Ribeye_steak.jpg"
-   }
+   "price": 4990
   },
   {
    "id": "hm2",
    "cat": "Стэйки",
    "name": "Тибон говядина",
-   "price": 4890,
-   "photo": "hm2-c1.jpg",
-   "photoCredit": {
-    "author": "Anagoria",
-    "license": "CC BY 3.0",
-    "url": "https://commons.wikimedia.org/wiki/File:2018-02-19_212112_T-Bone_Steak_in_Sydney_anagoria.jpg"
-   }
+   "price": 4890
   },
   {
    "id": "hm5",
    "cat": "Стэйки",
    "name": "Стэйк из сёмги",
-   "price": 4590,
-   "photo": "hm5-c1.jpg",
-   "photoCredit": {
-    "author": "woodleywonderworks",
-    "license": "CC BY 2.0",
-    "url": "https://commons.wikimedia.org/wiki/File:Flame_grilled_salmon_steaks_(herb_marinade_recipe).jpg"
-   }
+   "price": 4590
   },
   {
    "id": "hm6",
@@ -751,25 +565,13 @@
    "id": "p0",
    "cat": "Пицца",
    "name": "Пепперони",
-   "price": 3290,
-   "photo": "p0-c1.jpg",
-   "photoCredit": {
-    "author": "Dale Cruse from San Francisco, CA, USA",
-    "license": "CC BY 2.0",
-    "url": "https://commons.wikimedia.org/wiki/File:All_Good_pizza_(38501728345).jpg"
-   }
+   "price": 3290
   },
   {
    "id": "p1",
    "cat": "Пицца",
    "name": "Маргарита",
-   "price": 2290,
-   "photo": "p1-c1.jpg",
-   "photoCredit": {
-    "author": "Mario56",
-    "license": "CC BY-SA 3.0",
-    "url": "https://commons.wikimedia.org/wiki/File:Margherita_Originale.JPG"
-   }
+   "price": 2290
   },
   {
    "id": "p2",
@@ -787,13 +589,7 @@
    "id": "p4",
    "cat": "Пицца",
    "name": "Четыре сезона",
-   "price": 3200,
-   "photo": "p4-c1.jpg",
-   "photoCredit": {
-    "author": "Xocolatl",
-    "license": "Public domain",
-    "url": "https://commons.wikimedia.org/wiki/File:Pizza_Quattro_Stagioni.jpg"
-   }
+   "price": 3200
   },
   {
    "id": "p5",
@@ -805,13 +601,7 @@
    "id": "p6",
    "cat": "Пицца",
    "name": "BBQ",
-   "price": 3390,
-   "photo": "p6-c1.jpg",
-   "photoCredit": {
-    "author": "RegionVisitor90",
-    "license": "CC0",
-    "url": "https://commons.wikimedia.org/wiki/File:Grand_Junction_Tavern,_Pennington_20240627-130048.jpg"
-   }
+   "price": 3390
   },
   {
    "id": "zk10",
@@ -823,49 +613,25 @@
    "id": "zk11",
    "cat": "Закуски к пенному",
    "name": "Луковые кольца",
-   "price": 1290,
-   "photo": "zk11-c1.jpg",
-   "photoCredit": {
-    "author": "Andy Li",
-    "license": "CC0",
-    "url": "https://commons.wikimedia.org/wiki/File:Onion_rings_-_Honest_Burgers_2025-07-21.jpg"
-   }
+   "price": 1290
   },
   {
    "id": "zk14",
    "cat": "Закуски к пенному",
    "name": "Сырные палочки",
-   "price": 2090,
-   "photo": "zk14-c1.jpg",
-   "photoCredit": {
-    "author": "Missvain",
-    "license": "CC0",
-    "url": "https://commons.wikimedia.org/wiki/File:Round_Table_Pizza_-_October_2024_-_Sarah_Stierch.jpg"
-   }
+   "price": 2090
   },
   {
    "id": "zk6",
    "cat": "Закуски к пенному",
    "name": "Куриные крылышки",
-   "price": 2190,
-   "photo": "zk6-c1.jpg",
-   "photoCredit": {
-    "author": "Andy Li",
-    "license": "CC0",
-    "url": "https://commons.wikimedia.org/wiki/File:Chicken_wings_and_vegan_nuggets_-_Lost_Boys_Chicken_2023-11-12.jpg"
-   }
+   "price": 2190
   },
   {
    "id": "zk7",
    "cat": "Закуски к пенному",
    "name": "Наггетсы",
-   "price": 2190,
-   "photo": "zk7-c1.jpg",
-   "photoCredit": {
-    "author": "Jiafei Slay Queen",
-    "license": "CC0",
-    "url": "https://commons.wikimedia.org/wiki/File:Chicken_nuggets_on_a_plate.jpg"
-   }
+   "price": 2190
   },
   {
    "id": "zk8",
@@ -883,13 +649,7 @@
    "id": "zk5",
    "cat": "Закуски к пенному",
    "name": "Фри",
-   "price": 990,
-   "photo": "zk5-c1.jpg",
-   "photoCredit": {
-    "author": "Fumikas Sagisavas",
-    "license": "CC0",
-    "url": "https://commons.wikimedia.org/wiki/File:French_fries_%F0%9F%8D%9F.jpg"
-   }
+   "price": 990
   },
   {
    "id": "zk13",
