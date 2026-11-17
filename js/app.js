@@ -1,23 +1,45 @@
-/* OBLAKO guest menu — cards, search, tabs, menu.json + API */
+/* OBLAKO guest menu — tabs, search, cards, lightbox, rules, data loading */
 (function () {
+  'use strict';
+
+  /* ---------- Constants & state ---------- */
+  const ALL_TAB = 'Все';
   const RULES_TAB = 'Правила заведения';
   const BAR_CATS = new Set(['Кофе и чай', 'Безалкогольные', 'Алкогольные']);
-  const CACHE_KEY = 'oblako-menu-cache-v2';
-  const RULES_SEEN_KEY = 'oblako-rules-seen';
+  const CACHE_KEY = 'oblako-menu-cache-v3';
+  const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+  const POLL_MS = 2 * 60 * 1000;
+  const SEARCH_DEBOUNCE_MS = 140;
+  const EAGER_PHOTOS = 4;
   // Bump when dish photos change so browsers/SW drop stale files
   const PHOTO_VER = '20261012b';
-  const LOCAL_REVISION = (typeof MENU_REVISION !== 'undefined' && MENU_REVISION) ? MENU_REVISION : null;
+  // Revision of the bundled js/data.js. Remote data with another revision is stale.
+  const LOCAL_REVISION = typeof MENU_REVISION !== 'undefined' ? MENU_REVISION : null;
 
-  let activeCategory = 'Все';
-  let searchQuery = '';
-  let viewMode = 'grid';
-  let searchTimer = null;
-  let tabsBound = false;
-  let menuBound = false;
+  const state = {
+    category: ALL_TAB,
+    query: '',
+    view: 'grid',
+  };
+
   let cardIndex = 0;
+  let searchTimer = null;
   let sectionObserver = null;
-  let appliedRevision = LOCAL_REVISION;
+  let lastSignature = '';
 
+  const $ = (id) => document.getElementById(id);
+  const els = {
+    tabs: $('tabs'),
+    tabsList: $('tabs-list'),
+    search: $('search'),
+    searchClear: $('search-clear'),
+    viewToggle: $('view-toggle'),
+    menuRoot: $('menu-root'),
+    rulesRoot: $('rules-root'),
+    empty: $('empty-state'),
+  };
+
+  /* ---------- Helpers ---------- */
   const escapeHtml = (value) => String(value ?? '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -25,56 +47,16 @@
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 
-  function isBarItem(item) {
-    return item?.noPhoto || BAR_CATS.has(item?.cat);
+  function el(tag, className, text) {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text != null) node.textContent = text;
+    return node;
   }
 
-  function apiBase() {
-    return (window.OBLAKO_CONFIG && window.OBLAKO_CONFIG.apiBase)
-      ? String(window.OBLAKO_CONFIG.apiBase).replace(/\/$/, '')
-      : '';
-  }
-
-  function apiUrl(path) {
-    if (!path.startsWith('/')) path = `/${path}`;
-    return `${apiBase()}${path}`;
-  }
-
-  function withPhotoVer(url) {
-    if (!url) return '';
-    const s = String(url);
-    if (/^data:/i.test(s)) return s;
-    const join = s.includes('?') ? '&' : '?';
-    return `${s}${join}v=${PHOTO_VER}`;
-  }
-
-  function resolveImageUrl(src) {
-    if (!src) return '';
-    const s = String(src);
-    if (/^https?:\/\//i.test(s) || s.startsWith('data:')) return withPhotoVer(s);
-    if (s.startsWith('/')) {
-      const base = apiBase();
-      return withPhotoVer(base ? `${base}${s}` : s);
-    }
-    return withPhotoVer(s);
-  }
-
-  function dishWebp(item, size) {
-    if (!item?.id || isBarItem(item)) return '';
-    const photoKey = item.photoId || item.id;
-    return `image/dishes/w${size}/${photoKey}.webp`;
-  }
-
-  function getCategoryTabs() {
-    return [
-      'Все',
-      ...CATEGORY_ORDER.filter(cat => MENU.some(i => i.name && i.cat === cat)),
-      RULES_TAB,
-    ];
-  }
-
-  function isRulesView() {
-    return activeCategory === RULES_TAB;
+  function formatPrice(price) {
+    if (price == null) return 'по запросу';
+    return `${Number(price).toLocaleString('ru-RU')} ₸`;
   }
 
   function pluralPos(n) {
@@ -85,664 +67,551 @@
     return 'позиций';
   }
 
-  function isFilled(item) {
-    return Boolean(item && item.name);
+  function isBarItem(item) {
+    return Boolean(item?.noPhoto || BAR_CATS.has(item?.cat));
   }
 
-  function getFiltered() {
-    if (isRulesView()) return [];
-    const q = searchQuery.toLowerCase().trim();
-    return MENU.filter(item => {
-      if (!isFilled(item)) return false;
-      const matchCat = activeCategory === 'Все' || item.cat === activeCategory;
-      if (!q) return matchCat;
-      const haystack = [item.cat, item.subcat, item.name, item.desc]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase();
-      return matchCat && haystack.includes(q);
-    });
+  function apiUrl(path) {
+    const base = String(window.OBLAKO_CONFIG?.apiBase || '').replace(/\/$/, '');
+    return `${base}${path}`;
   }
 
-  function showSkeletons() {
-    const root = document.getElementById('menu-root');
-    if (!root || root.childElementCount) return;
-    const frag = document.createDocumentFragment();
-    for (let i = 0; i < 6; i++) {
-      const card = document.createElement('div');
-      card.className = 'card card--skeleton';
-      card.innerHTML = `
-        <div class="card-photo card-photo--skeleton"></div>
-        <div class="card-body">
-          <div class="skel skel--title"></div>
-          <div class="skel skel--desc"></div>
-          <div class="skel skel--price"></div>
-        </div>`;
-      frag.appendChild(card);
-    }
-    const wrap = document.createElement('div');
-    wrap.className = 'grid grid--skeleton';
-    wrap.appendChild(frag);
-    root.appendChild(wrap);
+  function resolveImageUrl(src) {
+    if (!src) return '';
+    let url = String(src);
+    if (url.startsWith('data:')) return url;
+    if (url.startsWith('/')) url = apiUrl(url);
+    return `${url}${url.includes('?') ? '&' : '?'}v=${PHOTO_VER}`;
   }
 
-  function setViewMode() {
-    const searchWrap = document.querySelector('.search-wrap');
-    const menuRoot = document.getElementById('menu-root');
-    const rulesRoot = document.getElementById('rules-root');
-    const emptyEl = document.getElementById('empty-state');
-    const viewToggle = document.getElementById('view-toggle');
-
-    if (!menuRoot || !rulesRoot || !emptyEl) return;
-
-    if (isRulesView()) {
-      if (searchWrap) searchWrap.style.display = 'none';
-      if (viewToggle) viewToggle.style.display = 'none';
-      menuRoot.style.display = 'none';
-      emptyEl.classList.remove('visible');
-      emptyEl.innerHTML = '';
-      rulesRoot.classList.add('is-visible');
-      buildRules();
-      return;
-    }
-
-    if (searchWrap) searchWrap.style.display = '';
-    if (viewToggle) viewToggle.style.display = '';
-    menuRoot.style.display = '';
-    menuRoot.classList.toggle('menu-root--list', viewMode === 'list');
-    rulesRoot.classList.remove('is-visible');
-    buildMenu();
-  }
-
-  function buildTabs() {
-    const tabsEl = document.getElementById('tabs');
-    if (!tabsEl) return;
-
-    const cats = getCategoryTabs();
-    tabsEl.replaceChildren();
-    cats.forEach(cat => {
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'tab-btn'
-        + (cat === activeCategory ? ' active' : '')
-        + (cat === RULES_TAB ? ' tab-btn--rules' : '');
-      btn.dataset.cat = cat;
-      btn.textContent = cat;
-      tabsEl.appendChild(btn);
-    });
-
-    if (!tabsBound) {
-      tabsBound = true;
-      tabsEl.addEventListener('click', (e) => {
-        const btn = e.target.closest('.tab-btn');
-        if (!btn) return;
-        const cat = btn.dataset.cat;
-        if (!cat || cat === activeCategory) return;
-        activeCategory = cat;
-        if (activeCategory !== 'Все' && activeCategory !== RULES_TAB) {
-          trackCategoryView(activeCategory);
-        }
-        buildTabs();
-        setViewMode();
-      });
-    }
-
-    const activeBtn = tabsEl.querySelector('.tab-btn.active');
-    if (activeBtn) {
-      activeBtn.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
-    }
-  }
-
-  function groupBySubcat(items) {
-    if (!items.some(i => i.subcat)) return [{ title: null, items }];
-    const order = [];
-    const map = {};
-    items.forEach(item => {
-      const key = item.subcat || 'Другое';
-      if (!map[key]) {
-        map[key] = [];
-        order.push(key);
-      }
-      map[key].push(item);
-    });
-    return order.map(key => ({ title: key, items: map[key] }));
-  }
-
-  function formatPrice(price) {
-    if (price == null) return 'по запросу';
-    return `${Number(price).toLocaleString('ru-RU')} ₸`;
+  function dishWebp(item, size) {
+    if (!item?.id || isBarItem(item)) return '';
+    return `image/dishes/w${size}/${item.photoId || item.id}.webp`;
   }
 
   function cartQty(id) {
     return window.OBLAKO_CART?.qty?.(id) || 0;
   }
 
-  function vibrate(ms = 12) {
+  function vibrate(ms) {
     try {
-      if (navigator.vibrate && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-        navigator.vibrate(ms);
-      }
-    } catch (_) { /* ignore */ }
+      if (navigator.vibrate && !matchMedia('(prefers-reduced-motion: reduce)').matches) navigator.vibrate(ms);
+    } catch (_) { /* unsupported */ }
   }
 
-  function buildQtyControls(item) {
-    const wrap = document.createElement('div');
-    wrap.className = 'card-qty';
-    wrap.dataset.qtyFor = item.id;
+  function scrollToTabs() {
+    els.tabs?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
 
-    const q = cartQty(item.id);
-    if (q <= 0) {
-      const add = document.createElement('button');
+  /* ---------- Filtering ---------- */
+  function getCategoryTabs() {
+    return [
+      ALL_TAB,
+      ...CATEGORY_ORDER.filter(cat => MENU.some(i => i.name && i.cat === cat)),
+      RULES_TAB,
+    ];
+  }
+
+  function getFiltered() {
+    const q = state.query.toLowerCase().trim();
+    return MENU.filter(item => {
+      if (!item?.name) return false;
+      if (state.category !== ALL_TAB && item.cat !== state.category) return false;
+      if (!q) return true;
+      return [item.cat, item.subcat, item.name, item.desc]
+        .filter(Boolean).join(' ').toLowerCase().includes(q);
+    });
+  }
+
+  /* ---------- Tabs ---------- */
+  function renderTabs() {
+    if (!els.tabsList) return;
+    const frag = document.createDocumentFragment();
+    getCategoryTabs().forEach(cat => {
+      const btn = el('button', 'tabs__btn', cat);
+      btn.type = 'button';
+      btn.dataset.cat = cat;
+      if (cat === RULES_TAB) btn.classList.add('tabs__btn--rules');
+      if (cat === state.category) {
+        btn.classList.add('is-active');
+        btn.setAttribute('aria-current', 'true');
+      }
+      frag.appendChild(btn);
+    });
+    els.tabsList.replaceChildren(frag);
+    els.tabsList.querySelector('.is-active')
+      ?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+  }
+
+  function setActiveTab(cat) {
+    els.tabsList?.querySelectorAll('.tabs__btn').forEach(btn => {
+      const on = btn.dataset.cat === cat;
+      btn.classList.toggle('is-active', on);
+      if (on) btn.scrollIntoView({ inline: 'center', block: 'nearest' });
+    });
+  }
+
+  function selectCategory(cat) {
+    if (!cat || cat === state.category) return;
+    state.category = cat;
+    if (cat !== ALL_TAB && cat !== RULES_TAB) trackEvent('category_view', { category: cat });
+    render();
+    // Deep in the list? Jump back so the new category starts right under the tabs
+    if (els.tabs.getBoundingClientRect().top <= 0) els.tabs.scrollIntoView({ block: 'start' });
+  }
+
+  /* ---------- Card ---------- */
+  function buildQtyControls(item) {
+    const wrap = el('div', 'card__qty');
+    wrap.dataset.qtyFor = item.id;
+    const qty = cartQty(item.id);
+
+    if (qty <= 0) {
+      const add = el('button', 'card__add', '+');
       add.type = 'button';
-      add.className = 'card-add';
       add.dataset.add = item.id;
       add.setAttribute('aria-label', `Добавить ${item.name}`);
-      add.textContent = '+';
       wrap.appendChild(add);
       return wrap;
     }
 
-    const dec = document.createElement('button');
+    const dec = el('button', 'card__qty-btn', '−');
     dec.type = 'button';
-    dec.className = 'card-qty__btn';
     dec.dataset.act = 'dec';
     dec.dataset.id = item.id;
     dec.setAttribute('aria-label', 'Меньше');
-    dec.textContent = '−';
 
-    const num = document.createElement('span');
-    num.className = 'card-qty__num';
-    num.textContent = String(q);
+    const num = el('span', 'card__qty-num', String(qty));
 
-    const inc = document.createElement('button');
+    const inc = el('button', 'card__qty-btn', '+');
     inc.type = 'button';
-    inc.className = 'card-qty__btn';
     inc.dataset.act = 'inc';
     inc.dataset.id = item.id;
     inc.setAttribute('aria-label', 'Больше');
-    inc.textContent = '+';
 
     wrap.append(dec, num, inc);
     return wrap;
   }
 
+  function markPhotoEmpty(frame) {
+    frame.classList.add('card__photo--empty');
+    frame.removeAttribute('role');
+    frame.removeAttribute('tabindex');
+    frame.removeAttribute('data-lightbox');
+    frame.replaceChildren(el('span', 'card__placeholder', 'OBLAKO'));
+  }
+
   function buildPhoto(item, eager) {
-    // Use <div>, not <button>: native button UA styles draw a light/white frame around the photo
-    const frame = document.createElement('div');
-    frame.className = 'card-photo';
+    const frame = el('div', 'card__photo');
+    const w400 = dishWebp(item, 400) || item.image;
+    const w800 = dishWebp(item, 800) || item.imageFull || w400;
+
+    if (!w400) {
+      markPhotoEmpty(frame);
+      return frame;
+    }
+
     frame.dataset.lightbox = '1';
     frame.setAttribute('role', 'button');
     frame.tabIndex = 0;
     frame.setAttribute('aria-label', `Фото: ${item.name}`);
 
-    const pos = item.objectPosition || 'center';
-    const w400 = dishWebp(item, 400) || resolveImageUrl(item.image);
-    const w800 = dishWebp(item, 800) || item.imageFull || w400;
-    const full = resolveImageUrl(item.imageFull || w800 || item.image);
-
-    if (!w400 && !item.image) {
-      frame.classList.add('card-photo--empty');
-      frame.removeAttribute('role');
-      frame.removeAttribute('tabindex');
-      const ph = document.createElement('div');
-      ph.className = 'card-photo__placeholder';
-      ph.innerHTML = '<span>OBLAKO</span><small>Скоро фото</small>';
-      frame.appendChild(ph);
-      return frame;
-    }
-
-    const skel = document.createElement('div');
-    skel.className = 'card-photo__skel';
-    frame.appendChild(skel);
-
-    const img = document.createElement('img');
-    img.className = 'card-photo__img';
-    img.alt = item.name || '';
+    const img = el('img', 'card__img');
+    img.alt = item.name;
     img.width = 400;
     img.height = 300;
     img.decoding = 'async';
     img.loading = eager ? 'eager' : 'lazy';
     if (eager) img.fetchPriority = 'high';
-    img.style.objectPosition = pos;
-    img.dataset.full = full;
-    if (w400 && w800 && w400 !== w800) {
+    img.dataset.full = resolveImageUrl(w800);
+    if (w400 !== w800) {
       img.srcset = `${resolveImageUrl(w400)} 400w, ${resolveImageUrl(w800)} 800w`;
-      img.sizes = '(max-width: 640px) 46vw, 240px';
-      img.src = resolveImageUrl(w400);
-    } else {
-      img.src = resolveImageUrl(w400 || item.image);
+      img.sizes = '(max-width: 767px) 50vw, 260px';
     }
-    img.addEventListener('load', () => {
-      img.classList.add('is-loaded');
-      skel.remove();
-    }, { once: true });
-    img.addEventListener('error', () => {
-      skel.remove();
-      frame.classList.add('card-photo--empty');
-      frame.removeAttribute('role');
-      frame.removeAttribute('tabindex');
-      img.remove();
-      const ph = document.createElement('div');
-      ph.className = 'card-photo__placeholder';
-      ph.innerHTML = '<span>OBLAKO</span><small>Скоро фото</small>';
-      frame.appendChild(ph);
-    }, { once: true });
+    img.src = resolveImageUrl(w400);
+    img.addEventListener('load', () => img.classList.add('is-loaded'), { once: true });
+    img.addEventListener('error', () => markPhotoEmpty(frame), { once: true });
 
     frame.appendChild(img);
     return frame;
   }
 
-  function buildCard(item) {
-    const card = document.createElement('article');
-    const bar = isBarItem(item);
-    card.className = bar ? 'card card--filled card--bar' : 'card card--filled';
-    card.dataset.id = item.id || '';
-    card.dataset.cat = item.cat || '';
+  function buildPrice(item) {
+    const wrap = el('div', 'card__price-wrap');
 
-    const idx = cardIndex++;
-    const eager = !bar && idx < 3 && !searchQuery;
-
-    if (!bar) card.appendChild(buildPhoto(item, eager));
-
-    const body = document.createElement('div');
-    body.className = 'card-body';
-
-    const title = document.createElement('h3');
-    title.className = 'card-title';
-    title.textContent = item.name;
-    body.appendChild(title);
-
-    if (item.desc) {
-      const desc = document.createElement('p');
-      desc.className = 'card-desc';
-      desc.textContent = item.desc;
-      body.appendChild(desc);
-    }
-
-    const footer = document.createElement('div');
-    footer.className = 'card-footer';
-
-    const priceWrap = document.createElement('div');
-    priceWrap.className = 'card-price-wrap';
     if (item.price2 != null) {
-      priceWrap.innerHTML = `
-        <div class="card-prices">
-          <div class="card-price-row">
-            ${item.priceLabel ? `<span class="card-price-label">${escapeHtml(item.priceLabel)}</span>` : ''}
-            <span class="card-price">${formatPrice(item.price)}</span>
-          </div>
-          <div class="card-price-row">
-            ${item.price2Label ? `<span class="card-price-label">${escapeHtml(item.price2Label)}</span>` : ''}
-            <span class="card-price">${formatPrice(item.price2)}</span>
-          </div>
-        </div>`;
-    } else {
-      const price = document.createElement('span');
-      price.className = 'card-price';
-      price.textContent = formatPrice(item.price);
-      priceWrap.appendChild(price);
-      if (item.volume) {
-        const vol = document.createElement('span');
-        vol.className = 'card-volume';
-        vol.textContent = item.volume;
-        priceWrap.appendChild(vol);
-      }
+      const prices = el('div', 'card__prices');
+      [[item.priceLabel, item.price], [item.price2Label, item.price2]].forEach(([label, price]) => {
+        const row = el('div', 'card__price-row');
+        if (label) row.appendChild(el('span', 'card__price-label', label));
+        row.appendChild(el('span', 'card__price', formatPrice(price)));
+        prices.appendChild(row);
+      });
+      wrap.appendChild(prices);
+      return wrap;
     }
-    footer.appendChild(priceWrap);
 
+    wrap.appendChild(el('span', 'card__price', formatPrice(item.price)));
+    if (item.volume) wrap.appendChild(el('span', 'card__volume', item.volume));
+    return wrap;
+  }
+
+  function buildCard(item) {
+    const bar = isBarItem(item);
+    const card = el('article', bar ? 'card card--bar' : 'card');
+    card.dataset.id = item.id || '';
+
+    if (!bar) {
+      const eager = cardIndex < EAGER_PHOTOS && !state.query;
+      card.appendChild(buildPhoto(item, eager));
+      cardIndex++;
+    }
+
+    const body = el('div', 'card__body');
+    body.appendChild(el('h3', 'card__title', item.name));
+    // No composition → no line at all, so the layout never reserves empty space
+    if (item.desc) body.appendChild(el('p', 'card__desc', item.desc));
+
+    const footer = el('div', 'card__footer');
+    footer.appendChild(buildPrice(item));
     if (item.price != null) footer.appendChild(buildQtyControls(item));
     body.appendChild(footer);
+
     card.appendChild(body);
     return card;
   }
 
-  function bindMenuEvents() {
-    if (menuBound) return;
-    menuBound = true;
-    const root = document.getElementById('menu-root');
-    if (!root) return;
-
-    const openPhoto = (photoEl) => {
-      if (!photoEl || photoEl.classList.contains('card-photo--empty')) return;
-      const img = photoEl.querySelector('img');
-      if (!img) return;
-      openLightbox(img.dataset.full || img.src, img.alt || '');
-    };
-
-    root.addEventListener('click', (e) => {
-      const photoBtn = e.target.closest('[data-lightbox]');
-      if (photoBtn) {
-        openPhoto(photoBtn);
-        return;
-      }
-
-      const add = e.target.closest('[data-add]');
-      if (add) {
-        e.stopPropagation();
-        const item = MENU.find(i => i.id === add.dataset.add);
-        if (item) {
-          window.OBLAKO_CART?.add(item);
-          vibrate(14);
-          refreshQty(item.id);
-        }
-        return;
-      }
-
-      const actBtn = e.target.closest('[data-act]');
-      if (actBtn) {
-        e.stopPropagation();
-        const id = actBtn.dataset.id;
-        const q = cartQty(id);
-        if (actBtn.dataset.act === 'inc') {
-          window.OBLAKO_CART?.add(id);
-          vibrate(10);
-        } else {
-          window.OBLAKO_CART?.setQty?.(id, q - 1);
-          vibrate(8);
-        }
-        refreshQty(id);
-      }
-    });
-
-    root.addEventListener('keydown', (e) => {
-      if (e.key !== 'Enter' && e.key !== ' ') return;
-      const photoEl = e.target.closest('[data-lightbox]');
-      if (!photoEl || e.target !== photoEl) return;
-      e.preventDefault();
-      openPhoto(photoEl);
-    });
-  }
-
   function refreshQty(id) {
-    const wrap = document.querySelector(`.card-qty[data-qty-for="${CSS.escape(id)}"]`);
+    const wrap = els.menuRoot?.querySelector(`.card__qty[data-qty-for="${CSS.escape(id)}"]`);
     const item = MENU.find(i => i.id === id);
-    if (!wrap || !item) return;
-    const next = buildQtyControls(item);
-    wrap.replaceWith(next);
+    if (wrap && item) wrap.replaceWith(buildQtyControls(item));
   }
 
   function refreshAllQty() {
-    document.querySelectorAll('.card-qty[data-qty-for]').forEach(el => {
-      refreshQty(el.dataset.qtyFor);
-    });
+    els.menuRoot?.querySelectorAll('.card__qty[data-qty-for]')
+      .forEach(node => refreshQty(node.dataset.qtyFor));
   }
 
-  function observeSections(root) {
-    if (sectionObserver) sectionObserver.disconnect();
-    if (activeCategory !== 'Все' || searchQuery) return;
-    const sections = root.querySelectorAll('.section[data-cat]');
-    if (!sections.length || !('IntersectionObserver' in window)) return;
+  /* ---------- Menu ---------- */
+  function groupBy(items, key, fallback) {
+    const map = new Map();
+    items.forEach(item => {
+      const k = item[key] || fallback;
+      if (!map.has(k)) map.set(k, []);
+      map.get(k).push(item);
+    });
+    return map;
+  }
+
+  function buildGrid(items) {
+    const grid = el('div', state.view === 'list' ? 'grid grid--list' : 'grid');
+    if (items.every(isBarItem)) grid.classList.add('grid--bar');
+    items.forEach(item => grid.appendChild(buildCard(item)));
+    return grid;
+  }
+
+  function buildSection(cat, items, withHead) {
+    const sec = el('section', 'section');
+    sec.dataset.cat = cat;
+
+    if (withHead) {
+      const head = el('div', 'section__head');
+      const line = () => {
+        const node = el('span', 'section__line');
+        node.setAttribute('aria-hidden', 'true');
+        return node;
+      };
+      head.append(
+        el('h2', 'section__title', cat),
+        line(),
+        el('span', 'section__count', `${items.length} поз.`),
+      );
+      sec.appendChild(head);
+    }
+
+    const hasSub = items.some(i => i.subcat);
+    if (!hasSub) {
+      sec.appendChild(buildGrid(items));
+      return sec;
+    }
+
+    groupBy(items, 'subcat', 'Другое').forEach((subItems, title) => {
+      const sub = el('div', 'subsection-title');
+      sub.append(
+        el('h3', 'subsection-title__text', title),
+        el('span', 'subsection-title__count', `${subItems.length} поз.`),
+      );
+      sec.append(sub, buildGrid(subItems));
+    });
+    return sec;
+  }
+
+  function renderEmpty() {
+    const reset = el('button', 'empty__reset', state.query ? 'Сбросить поиск' : 'Показать всё меню');
+    reset.type = 'button';
+    reset.addEventListener('click', () => (state.query ? clearSearch() : goHome()));
+    els.empty.replaceChildren(
+      el('p', 'empty__title', 'Ничего не найдено'),
+      el('p', 'empty__hint', state.query
+        ? `По запросу «${state.query}» совпадений нет`
+        : 'В этом разделе пока пусто'),
+      reset,
+    );
+    els.empty.hidden = false;
+  }
+
+  function renderMenu() {
+    const items = getFiltered();
+    cardIndex = 0;
+
+    if (!items.length) {
+      els.menuRoot.replaceChildren();
+      renderEmpty();
+      return;
+    }
+    els.empty.hidden = true;
+    els.empty.replaceChildren();
+
+    const frag = document.createDocumentFragment();
+    const single = state.category !== ALL_TAB && !state.query;
+
+    if (single) {
+      const hero = el('div', 'category-hero');
+      hero.append(
+        el('span', 'category-hero__label', 'Категория'),
+        el('h2', 'category-hero__title', state.category),
+        el('p', 'category-hero__meta', `${items.length} ${pluralPos(items.length)} в меню`),
+      );
+      frag.appendChild(hero);
+    }
+
+    const groups = groupBy(items, 'cat');
+    CATEGORY_ORDER
+      .filter(cat => groups.has(cat))
+      .forEach(cat => frag.appendChild(buildSection(cat, groups.get(cat), !single)));
+
+    els.menuRoot.replaceChildren(frag);
+    observeSections();
+  }
+
+  // Highlight the tab of the section in view while scrolling the full menu
+  function observeSections() {
+    sectionObserver?.disconnect();
+    if (state.category !== ALL_TAB || state.query || !('IntersectionObserver' in window)) return;
 
     sectionObserver = new IntersectionObserver((entries) => {
       const visible = entries
         .filter(en => en.isIntersecting)
         .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-      if (!visible) return;
-      const cat = visible.target.dataset.cat;
-      const tabsEl = document.getElementById('tabs');
-      if (!tabsEl || !cat) return;
-      tabsEl.querySelectorAll('.tab-btn').forEach(btn => {
-        const on = btn.dataset.cat === cat;
-        btn.classList.toggle('active', on);
-        if (on) btn.scrollIntoView({ inline: 'center', block: 'nearest' });
-      });
+      if (visible) setActiveTab(visible.target.dataset.cat);
     }, { rootMargin: '-30% 0px -55% 0px', threshold: [0.15, 0.4, 0.7] });
 
-    sections.forEach(sec => sectionObserver.observe(sec));
+    els.menuRoot.querySelectorAll('.section[data-cat]').forEach(sec => sectionObserver.observe(sec));
   }
 
-  function buildMenu() {
-    const root = document.getElementById('menu-root');
-    const emptyEl = document.getElementById('empty-state');
-    if (!root || !emptyEl) return;
+  /* ---------- Rules ---------- */
+  function renderRules() {
+    const blocks = typeof RULES === 'undefined' ? '' : RULES.map((section, idx) => `
+      <details class="rules-block"${idx === 0 ? ' open' : ''}>
+        <summary class="rules-block__title">${escapeHtml(section.title)}</summary>
+        <ul class="rules-block__list">
+          ${section.items.map(item => `<li>${escapeHtml(item)}</li>`).join('')}
+        </ul>
+      </details>`).join('');
 
-    const filtered = getFiltered();
-    cardIndex = 0;
-    bindMenuEvents();
+    els.rulesRoot.innerHTML = `
+      <div class="rules">
+        <button type="button" class="rules__back" data-rules-back>← Вернуться к меню</button>
+        <h2 class="rules__title">Правила заведения</h2>
+        <p class="rules__intro">Ознакомьтесь с правилами посещения заведения OBLAKO.</p>
+        <div class="rules__list">${blocks}</div>
+      </div>`;
+  }
 
-    if (!filtered.length) {
-      root.replaceChildren();
-      emptyEl.classList.add('visible');
-      emptyEl.replaceChildren();
-      const title = document.createElement('p');
-      title.className = 'empty__title';
-      title.textContent = 'Ничего не найдено';
-      const hint = document.createElement('p');
-      hint.className = 'empty__hint';
-      hint.textContent = searchQuery
-        ? `По запросу «${searchQuery}» совпадений нет`
-        : 'В этом разделе пока пусто';
-      const reset = document.createElement('button');
-      reset.type = 'button';
-      reset.className = 'btn-reset-search';
-      reset.textContent = searchQuery ? 'Сбросить поиск' : 'Показать всё меню';
-      reset.addEventListener('click', () => {
-        if (searchQuery) clearSearch();
-        else goHome();
-      });
-      emptyEl.append(title, hint, reset);
+  /* ---------- Render ---------- */
+  function render() {
+    renderTabs();
+    const rules = state.category === RULES_TAB;
+
+    document.querySelector('.search').hidden = rules;
+    els.viewToggle.hidden = rules;
+    els.menuRoot.hidden = rules;
+    els.rulesRoot.hidden = !rules;
+
+    if (rules) {
+      sectionObserver?.disconnect();
+      els.empty.hidden = true;
+      renderRules();
       return;
     }
-
-    emptyEl.classList.remove('visible');
-    emptyEl.replaceChildren();
-
-    const groups = {};
-    filtered.forEach(item => {
-      if (!groups[item.cat]) groups[item.cat] = [];
-      groups[item.cat].push(item);
-    });
-
-    const categoryOrder = CATEGORY_ORDER.filter(cat => groups[cat]?.length);
-    const frag = document.createDocumentFragment();
-    const showHero = activeCategory !== 'Все' && !searchQuery;
-
-    if (showHero) {
-      const total = filtered.length;
-      const hero = document.createElement('div');
-      hero.className = 'category-hero category-hero--enter';
-      hero.innerHTML = `
-        <span class="category-hero__label">Категория</span>
-        <h2 class="category-hero__title">${escapeHtml(activeCategory)}</h2>
-        <p class="category-hero__meta">${total} ${pluralPos(total)} в меню</p>`;
-      frag.appendChild(hero);
-    }
-
-    categoryOrder.forEach((cat, index) => {
-      const items = groups[cat];
-      const sec = document.createElement('section');
-      sec.className = 'section section--enter';
-      sec.dataset.cat = cat;
-      sec.style.animationDelay = `${Math.min(index, 8) * 0.04}s`;
-
-      if (!showHero) {
-        const head = document.createElement('div');
-        head.className = 'section-title';
-        head.innerHTML = `
-          <span class="section-title__text">${escapeHtml(cat)}</span>
-          <span class="section-title__line" aria-hidden="true"></span>
-          <span class="section-title__count">${items.length} поз.</span>`;
-        sec.appendChild(head);
-      }
-
-      groupBySubcat(items).forEach(({ title, items: subItems }) => {
-        if (title) {
-          const subTitle = document.createElement('div');
-          subTitle.className = 'subcategory-title';
-          subTitle.innerHTML = `
-            <span class="subcategory-title__text">${escapeHtml(title)}</span>
-            <span class="subcategory-title__count">${subItems.length} поз.</span>`;
-          sec.appendChild(subTitle);
-        }
-        const grid = document.createElement('div');
-        grid.className = viewMode === 'list' ? 'grid grid--list' : 'grid';
-        if (subItems.every(isBarItem)) grid.classList.add('grid--bar');
-        subItems.forEach(item => grid.appendChild(buildCard(item)));
-        sec.appendChild(grid);
-      });
-
-      frag.appendChild(sec);
-    });
-
-    root.replaceChildren(frag);
-    observeSections(root);
+    renderMenu();
   }
 
-  /* ── Lightbox ── */
-  let lightboxEl = null;
+  function openRules() {
+    state.category = RULES_TAB;
+    render();
+    scrollToTabs();
+  }
+
+  function goHome() {
+    state.category = ALL_TAB;
+    state.query = '';
+    els.search.value = '';
+    updateSearchClear();
+    render();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  /* ---------- Search ---------- */
+  function updateSearchClear() {
+    els.searchClear.hidden = !els.search.value.trim();
+  }
+
+  function applySearch(value) {
+    state.query = value;
+    if (value) state.category = ALL_TAB;
+    render();
+  }
+
+  function clearSearch() {
+    els.search.value = '';
+    state.query = '';
+    updateSearchClear();
+    render();
+    els.search.focus();
+  }
+
+  /* ---------- Lightbox ---------- */
+  let lightbox = null;
+  let lastFocus = null;
+
+  function closeLightbox() {
+    if (!lightbox || lightbox.hidden) return;
+    lightbox.hidden = true;
+    document.body.classList.remove('is-locked');
+    lastFocus?.focus?.();
+  }
+
   function ensureLightbox() {
-    if (lightboxEl) return lightboxEl;
-    lightboxEl = document.createElement('div');
-    lightboxEl.className = 'lightbox';
-    lightboxEl.hidden = true;
-    lightboxEl.innerHTML = `
-      <div class="lightbox__backdrop" data-close="1"></div>
+    if (lightbox) return lightbox;
+    lightbox = el('div', 'lightbox');
+    lightbox.hidden = true;
+    lightbox.setAttribute('role', 'dialog');
+    lightbox.setAttribute('aria-modal', 'true');
+    lightbox.innerHTML = `
+      <div class="lightbox__backdrop" data-close></div>
       <figure class="lightbox__figure">
         <img class="lightbox__img" alt="">
         <figcaption class="lightbox__cap"></figcaption>
       </figure>
-      <button type="button" class="lightbox__close" data-close="1" aria-label="Закрыть">✕</button>`;
-    document.body.appendChild(lightboxEl);
+      <button type="button" class="lightbox__close" data-close aria-label="Закрыть">✕</button>`;
+    document.body.appendChild(lightbox);
 
     let startY = 0;
-    lightboxEl.addEventListener('click', e => {
+    lightbox.addEventListener('click', e => {
       if (e.target.closest('[data-close]')) closeLightbox();
     });
-    lightboxEl.addEventListener('touchstart', e => {
-      startY = e.touches[0].clientY;
-    }, { passive: true });
-    lightboxEl.addEventListener('touchend', e => {
-      const dy = e.changedTouches[0].clientY - startY;
-      if (dy > 80) closeLightbox();
+    lightbox.addEventListener('touchstart', e => { startY = e.touches[0].clientY; }, { passive: true });
+    lightbox.addEventListener('touchend', e => {
+      if (e.changedTouches[0].clientY - startY > 80) closeLightbox();
     }, { passive: true });
     document.addEventListener('keydown', e => {
-      if (e.key === 'Escape' && !lightboxEl.hidden) closeLightbox();
+      if (e.key === 'Escape') closeLightbox();
     });
-    return lightboxEl;
+    return lightbox;
   }
 
-  function openLightbox(src, alt) {
-    if (!src) return;
+  function openLightbox(photo) {
+    const img = photo?.querySelector('img');
+    if (!img) return;
     const box = ensureLightbox();
-    const img = box.querySelector('.lightbox__img');
-    const cap = box.querySelector('.lightbox__cap');
-    img.src = src;
-    img.alt = alt || '';
-    cap.textContent = alt || '';
+    box.querySelector('.lightbox__img').src = img.dataset.full || img.src;
+    box.querySelector('.lightbox__img').alt = img.alt;
+    box.querySelector('.lightbox__cap').textContent = img.alt;
+    lastFocus = document.activeElement;
     box.hidden = false;
-    document.body.classList.add('lightbox-open');
+    document.body.classList.add('is-locked');
+    box.querySelector('.lightbox__close').focus();
   }
 
-  function closeLightbox() {
-    if (!lightboxEl) return;
-    lightboxEl.hidden = true;
-    document.body.classList.remove('lightbox-open');
-  }
-
-  function buildRules() {
-    const root = document.getElementById('rules-root');
-    if (!root) return;
-    root.innerHTML = `
-      <div class="rules-page">
-        <button type="button" class="rules-back" id="rules-back">← Вернуться к меню</button>
-        <h2 class="rules-page__title">Правила заведения</h2>
-        <p class="rules-page__intro">
-          Ознакомьтесь с правилами посещения заведения OBLAKO.
-        </p>
-        <div class="rules-list">
-          ${typeof RULES !== 'undefined' ? RULES.map((section, idx) => `
-            <details class="rules-block" ${idx === 0 ? 'open' : ''}>
-              <summary class="rules-block__title">${escapeHtml(section.title)}</summary>
-              <ul class="rules-block__list">
-                ${section.items.map(item => `<li>${escapeHtml(item)}</li>`).join('')}
-              </ul>
-            </details>
-          `).join('') : '<p>Правила загружаются...</p>'}
-        </div>
-      </div>`;
-
-    document.getElementById('rules-back')?.addEventListener('click', () => {
-      activeCategory = 'Все';
-      buildTabs();
-      setViewMode();
-      document.querySelector('.tabs-outer')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  /* ---------- Events ---------- */
+  function bindEvents() {
+    els.tabsList?.addEventListener('click', e => {
+      selectCategory(e.target.closest('.tabs__btn')?.dataset.cat);
     });
 
-    try { localStorage.setItem(RULES_SEEN_KEY, '1'); } catch (_) { /* ignore */ }
-  }
-
-  function openRules() {
-    activeCategory = RULES_TAB;
-    buildTabs();
-    setViewMode();
-    document.querySelector('.tabs-outer')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }
-
-  function goHome() {
-    activeCategory = 'Все';
-    searchQuery = '';
-    const searchInput = document.getElementById('search');
-    if (searchInput) searchInput.value = '';
-    updateSearchClear();
-    buildTabs();
-    setViewMode();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
-
-  function scrollToTabs() {
-    document.querySelector('.tabs-outer')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }
-
-  function updateSearchClear() {
-    const input = document.getElementById('search');
-    const clearBtn = document.getElementById('search-clear');
-    if (input && clearBtn) clearBtn.hidden = !input.value.trim();
-  }
-
-  function clearSearch() {
-    const input = document.getElementById('search');
-    if (!input) return;
-    input.value = '';
-    searchQuery = '';
-    updateSearchClear();
-    buildTabs();
-    setViewMode();
-    input.focus();
-  }
-
-  function applySearch(value) {
-    searchQuery = value;
-    if (searchQuery) activeCategory = 'Все';
-    updateSearchClear();
-    buildTabs();
-    setViewMode();
-  }
-
-  document.getElementById('view-toggle')?.addEventListener('click', (e) => {
-    const btn = e.target.closest('[data-view]');
-    if (!btn) return;
-    viewMode = btn.dataset.view;
-    document.querySelectorAll('.view-toggle__btn').forEach(b => {
-      b.classList.toggle('active', b.dataset.view === viewMode);
+    els.viewToggle?.addEventListener('click', e => {
+      const btn = e.target.closest('[data-view]');
+      if (!btn || btn.dataset.view === state.view) return;
+      state.view = btn.dataset.view;
+      els.viewToggle.querySelectorAll('[data-view]').forEach(b => {
+        const on = b === btn;
+        b.classList.toggle('is-active', on);
+        b.setAttribute('aria-pressed', String(on));
+      });
+      renderMenu();
     });
-    setViewMode();
-  });
 
-  document.getElementById('search')?.addEventListener('input', (e) => {
-    const value = e.target.value;
-    updateSearchClear();
-    clearTimeout(searchTimer);
-    searchTimer = setTimeout(() => applySearch(value), 140);
-  });
-  document.getElementById('search')?.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') clearSearch();
-  });
-  document.getElementById('search-clear')?.addEventListener('click', clearSearch);
-  document.getElementById('open-rules')?.addEventListener('click', openRules);
+    els.search?.addEventListener('input', e => {
+      const { value } = e.target;
+      updateSearchClear();
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(() => applySearch(value), SEARCH_DEBOUNCE_MS);
+    });
+    els.search?.addEventListener('keydown', e => {
+      if (e.key === 'Escape') clearSearch();
+      if (e.key === 'Enter') els.search.blur();      // hide the mobile keyboard
+    });
+    els.searchClear?.addEventListener('click', clearSearch);
 
+    els.rulesRoot?.addEventListener('click', e => {
+      if (!e.target.closest('[data-rules-back]')) return;
+      state.category = ALL_TAB;
+      render();
+      scrollToTabs();
+    });
+
+    els.menuRoot?.addEventListener('click', e => {
+      const photo = e.target.closest('[data-lightbox]');
+      if (photo) {
+        openLightbox(photo);
+        return;
+      }
+
+      const add = e.target.closest('[data-add]');
+      if (add) {
+        const item = MENU.find(i => i.id === add.dataset.add);
+        if (!item) return;
+        window.OBLAKO_CART?.add(item);
+        vibrate(14);
+        refreshQty(item.id);
+        return;
+      }
+
+      const act = e.target.closest('[data-act]');
+      if (act) {
+        const { id } = act.dataset;
+        if (act.dataset.act === 'inc') window.OBLAKO_CART?.add(id);
+        else window.OBLAKO_CART?.setQty(id, cartQty(id) - 1);
+        vibrate(10);
+        refreshQty(id);
+      }
+    });
+
+    els.menuRoot?.addEventListener('keydown', e => {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      if (!e.target.matches('[data-lightbox]')) return;
+      e.preventDefault();
+      openLightbox(e.target);
+    });
+
+    window.addEventListener('oblako-cart-change', refreshAllQty);
+  }
+
+  /* ---------- Data loading ---------- */
   function trackEvent(eventType, meta = {}) {
     if (location.protocol === 'file:') return;
-    fetch(`${apiUrl('/api/analytics/event')}`, {
+    fetch(apiUrl('/api/analytics/event'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ eventType, path: location.pathname, ...meta }),
@@ -750,84 +619,63 @@
     }).catch(() => {});
   }
 
-  function trackCategoryView(category) {
-    trackEvent('category_view', { category });
+  function normalizeItem(raw) {
+    const item = { ...raw };
+    if (isBarItem(item)) {
+      item.noPhoto = true;
+      delete item.image;
+      delete item.imageFull;
+      return item;
+    }
+    if (dishWebp(item, 400)) {
+      item.image = dishWebp(item, 400);
+      item.imageFull = dishWebp(item, 800);
+    } else if (!item.image && typeof IMAGE_MAP !== 'undefined') {
+      item.image = IMAGE_MAP[item.photoId || item.id] || '';
+    }
+    return item;
   }
 
-  function applyMenuPayload(data, { fromApi = false } = {}) {
+  // Accepts only data built from the same js/data.js revision — a not-yet-redeployed
+  // API or an old cache must never show outdated prices.
+  function applyMenuPayload(data) {
     if (!data?.items?.length) return false;
+    if (LOCAL_REVISION && data.revision !== LOCAL_REVISION) return false;
 
-    // Don't let a stale Render DB wipe the Word-menu rewrite from menu.json / data.js
-    if (fromApi && appliedRevision && data.revision && data.revision !== appliedRevision) {
-      const localCats = new Set(
-        (typeof CATEGORY_ORDER !== 'undefined' ? CATEGORY_ORDER : []).concat(
-          MENU.map(i => i.cat)
-        )
-      );
-      const apiCats = new Set(data.categories || []);
-      const missing = [...localCats].filter(c => c && !apiCats.has(c));
-      if (missing.length) return false;
-    }
-    if (fromApi && appliedRevision && !data.revision) {
-      const hasNewKitchen = data.categories?.includes('Мясо из тандыра')
-        && data.categories?.includes('Закуски под водочку');
-      if (!hasNewKitchen) return false;
-    }
+    // Skip re-render (and scroll jumps) when nothing changed
+    const signature = JSON.stringify([data.categories, data.items]);
+    if (signature === lastSignature) return false;
+    lastSignature = signature;
 
-    MENU.length = 0;
-    data.items.forEach(item => {
-      const next = { ...item };
-      if (next.image) next.image = resolveImageUrl(next.image);
-      if (next.imageFull) next.imageFull = resolveImageUrl(next.imageFull);
-      if (!next.noPhoto && !isBarItem(next)) {
-        const mapKey = next.photoId || next.id;
-        if (!next.image && typeof IMAGE_MAP !== 'undefined' && IMAGE_MAP[mapKey]) {
-          next.image = resolveImageUrl(IMAGE_MAP[mapKey]);
-        }
-        // Prefer local WebP when available on Pages (photoId aliases share files)
-        if (dishWebp(next, 400)) {
-          next.image = dishWebp(next, 400);
-          next.imageFull = dishWebp(next, 800);
-          next.imageSrcset = `${dishWebp(next, 400)} 400w, ${dishWebp(next, 800)} 800w`;
-        }
-      } else {
-        next.noPhoto = true;
-        next.image = undefined;
-      }
-      MENU.push(next);
-    });
-    if (data.categories?.length) {
-      CATEGORY_ORDER.length = 0;
-      data.categories.forEach(c => CATEGORY_ORDER.push(c));
-    }
-    if (data.revision) appliedRevision = data.revision;
+    MENU.splice(0, MENU.length, ...data.items.map(normalizeItem));
+    if (data.categories?.length) CATEGORY_ORDER.splice(0, CATEGORY_ORDER.length, ...data.categories);
+
     try {
       localStorage.setItem(CACHE_KEY, JSON.stringify({
         savedAt: Date.now(),
-        revision: appliedRevision,
-        categories: [...CATEGORY_ORDER],
+        revision: data.revision || null,
+        categories: CATEGORY_ORDER,
         items: MENU,
       }));
-    } catch (_) { /* quota */ }
+    } catch (_) { /* quota or private mode */ }
     return true;
   }
 
-  async function loadMenuJson() {
+  function hydrateFromCache() {
     try {
-      const res = await fetch(`data/menu.json?_=${Date.now()}`, { cache: 'no-store' });
-      if (!res.ok) return false;
-      const data = await res.json();
+      const data = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null');
+      if (!data || Date.now() - (data.savedAt || 0) > CACHE_TTL_MS) return false;
       return applyMenuPayload(data);
-    } catch {
+    } catch (_) {
       return false;
     }
   }
 
-  async function fetchMenuOnce(timeoutMs) {
+  async function fetchJson(url, timeoutMs) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
-      const res = await fetch(`${apiUrl('/api/menu')}?_=${Date.now()}`, {
+      const res = await fetch(`${url}?_=${Date.now()}`, {
         signal: controller.signal,
         cache: 'no-store',
         headers: { Accept: 'application/json' },
@@ -839,86 +687,61 @@
     }
   }
 
+  async function loadMenuJson() {
+    try {
+      if (applyMenuPayload(await fetchJson('data/menu.json', 8000))) render();
+    } catch (_) { /* bundled data.js stays */ }
+  }
+
   async function loadMenuFromApi() {
     if (location.protocol === 'file:') return;
     const delays = [0, 2500, 6000];
     for (let i = 0; i < delays.length; i++) {
       if (delays[i]) await new Promise(r => setTimeout(r, delays[i]));
       try {
-        const data = await fetchMenuOnce(i === 0 ? 10000 : 25000);
-        if (applyMenuPayload(data, { fromApi: true })) {
-          buildTabs();
-          setViewMode();
-          trackEvent('page_view');
-          return;
-        }
-      } catch (_) { /* retry */ }
-    }
-  }
-
-  function hydrateFromCache() {
-    try {
-      const raw = localStorage.getItem(CACHE_KEY);
-      if (!raw) return false;
-      const data = JSON.parse(raw);
-      if (!data?.items?.length) return false;
-      if (Date.now() - (data.savedAt || 0) > 1000 * 60 * 60 * 24) return false;
-      return applyMenuPayload(data);
-    } catch {
-      return false;
-    }
-  }
-
-  // Enrich static MENU with webp paths before first paint
-  if (typeof MENU !== 'undefined') {
-    MENU.forEach(item => {
-      if (isBarItem(item)) {
-        item.noPhoto = true;
+        const data = await fetchJson(apiUrl('/api/menu'), i === 0 ? 10000 : 25000);
+        if (applyMenuPayload(data)) render();
         return;
-      }
-      if (dishWebp(item, 400)) {
-        item.image = dishWebp(item, 400);
-        item.imageFull = dishWebp(item, 800);
-      } else if (typeof IMAGE_MAP !== 'undefined') {
-        const mapKey = item.photoId || item.id;
-        if (IMAGE_MAP[mapKey]) item.image = IMAGE_MAP[mapKey];
-      }
-    });
+      } catch (_) { /* cold start — retry */ }
+    }
   }
+
+  function showSkeletons() {
+    if (MENU.length) return;
+    const grid = el('div', 'grid');
+    for (let i = 0; i < 6; i++) {
+      const card = el('div', 'card card--skeleton');
+      const body = el('div', 'card__body');
+      body.append(el('div', 'skel skel--title'), el('div', 'skel'), el('div', 'skel skel--price'));
+      card.append(el('div', 'card__photo'), body);
+      grid.appendChild(card);
+    }
+    els.menuRoot.replaceChildren(grid);
+  }
+
+  /* ---------- Init ---------- */
+  MENU.splice(0, MENU.length, ...MENU.map(normalizeItem));
 
   window.OBLAKO = Object.assign(window.OBLAKO || {}, {
     openRules,
     goHome,
     scrollToTabs,
-    openCart: () => window.OBLAKO_CART?.open(),
-    reloadMenu: loadMenuFromApi,
-    refreshQty: refreshAllQty,
   });
 
-  window.addEventListener('oblako-cart-change', refreshAllQty);
-
+  bindEvents();
   showSkeletons();
   hydrateFromCache();
-  buildTabs();
-  setViewMode();
+  render();
 
-  (async () => {
-    const ok = await loadMenuJson();
-    if (ok) {
-      buildTabs();
-      setViewMode();
-    }
+  loadMenuJson().then(() => {
     loadMenuFromApi();
-  })();
+    trackEvent('page_view');
+  });
 
   setInterval(() => {
     if (document.visibilityState !== 'visible') return;
-    fetchMenuOnce(12000)
-      .then(data => {
-        if (!applyMenuPayload(data, { fromApi: true })) return;
-        buildTabs();
-        setViewMode();
-      })
+    fetchJson(apiUrl('/api/menu'), 12000)
+      .then(data => { if (applyMenuPayload(data)) render(); })
       .catch(() => {});
-  }, 120000);
+  }, POLL_MS);
 })();

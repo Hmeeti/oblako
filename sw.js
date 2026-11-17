@@ -1,25 +1,22 @@
-/* Service Worker — SWR for menu/app, images revalidate */
-const CACHE_STATIC = 'oblako-static-v10';
-const CACHE_IMAGES = 'oblako-images-v10';
+/* OBLAKO service worker
+   - app shell & menu data: network first, cache as offline fallback (prices are always fresh)
+   - dish photos: cache first (URLs carry ?v=PHOTO_VER, so a new photo = a new URL) */
+const VERSION = 'v11';
+const CACHE_STATIC = `oblako-static-${VERSION}`;
+const CACHE_IMAGES = `oblako-images-${VERSION}`;
 
 const PRECACHE = [
   './',
   './index.html',
-  './css/style.css',
-  './css/cart.css',
-  './css/wow.css',
-  './css/fun.css',
-  './js/config.js',
-  './js/data.js',
-  './js/image-map.js',
-  './js/rules.js',
-  './js/app.js',
-  './js/cart.js',
-  './js/effects.js',
-  './js/ui.js',
-  './js/wow.js',
-  './js/fun.js',
-  './data/menu.json',
+  './css/style.css?v=11',
+  './css/cart.css?v=11',
+  './js/config.js?v=11',
+  './js/data.js?v=11',
+  './js/image-map.js?v=11',
+  './js/rules.js?v=11',
+  './js/app.js?v=11',
+  './js/cart.js?v=11',
+  './js/ui.js?v=11',
   './image/logo.webp',
   './image/favicon.png',
   './manifest.webmanifest',
@@ -27,21 +24,47 @@ const PRECACHE = [
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_STATIC).then(cache => cache.addAll(PRECACHE)).then(() => self.skipWaiting())
+    caches.open(CACHE_STATIC)
+      .then(cache => cache.addAll(PRECACHE))
+      .then(() => self.skipWaiting())
   );
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then(keys => Promise.all(
-      keys.filter(k => ![CACHE_STATIC, CACHE_IMAGES].includes(k)).map(k => caches.delete(k))
-    )).then(() => self.clients.claim())
+    caches.keys()
+      .then(keys => Promise.all(
+        keys.filter(k => k !== CACHE_STATIC && k !== CACHE_IMAGES).map(k => caches.delete(k))
+      ))
+      .then(() => self.clients.claim())
   );
 });
 
 function isImage(url) {
-  return /\.(webp|jpe?g|png|gif|svg)(\?|$)/i.test(url.pathname)
-    || url.pathname.includes('/image/dishes/');
+  return /\.(webp|jpe?g|png|gif|svg)$/i.test(url.pathname);
+}
+
+async function networkFirst(req) {
+  const cache = await caches.open(CACHE_STATIC);
+  try {
+    const res = await fetch(req);
+    if (res.ok) cache.put(req, res.clone());
+    return res;
+  } catch (err) {
+    // menu.json is requested with a cache-busting query — match it without one offline
+    const cached = await cache.match(req, { ignoreSearch: req.url.includes('/data/menu.json') });
+    if (cached) return cached;
+    throw err;
+  }
+}
+
+async function cacheFirst(req) {
+  const cache = await caches.open(CACHE_IMAGES);
+  const cached = await cache.match(req);
+  if (cached) return cached;
+  const res = await fetch(req);
+  if (res.ok) cache.put(req, res.clone());
+  return res;
 }
 
 self.addEventListener('fetch', (event) => {
@@ -50,46 +73,5 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
 
-  // menu.json — stale while revalidate
-  if (url.pathname.endsWith('/data/menu.json')) {
-    event.respondWith((async () => {
-      const cache = await caches.open(CACHE_STATIC);
-      const cached = await cache.match(req);
-      const network = fetch(req).then(res => {
-        if (res.ok) cache.put(req, res.clone());
-        return res;
-      }).catch(() => cached);
-      return cached || network;
-    })());
-    return;
-  }
-
-  if (isImage(url)) {
-    event.respondWith((async () => {
-      const cache = await caches.open(CACHE_IMAGES);
-      const cached = await cache.match(req);
-      const networkPromise = fetch(req).then(res => {
-        if (res.ok) cache.put(req, res.clone());
-        return res;
-      }).catch(() => cached);
-      // Prefer fresh photo when online; fall back to cache offline
-      try {
-        const fresh = await networkPromise;
-        if (fresh) return fresh;
-      } catch (_) { /* ignore */ }
-      return cached || Response.error();
-    })());
-    return;
-  }
-
-  // app shell — cache falling back to network
-  event.respondWith(
-    caches.match(req).then(cached => cached || fetch(req).then(res => {
-      if (res.ok && (url.pathname.endsWith('.js') || url.pathname.endsWith('.css') || url.pathname.endsWith('.html'))) {
-        const copy = res.clone();
-        caches.open(CACHE_STATIC).then(c => c.put(req, copy));
-      }
-      return res;
-    }).catch(() => cached))
-  );
+  event.respondWith(isImage(url) ? cacheFirst(req) : networkFirst(req));
 });

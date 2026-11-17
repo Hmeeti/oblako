@@ -1,87 +1,43 @@
+/* OBLAKO UI shell — toast, bottom dock, service worker */
 (function () {
-  const header = document.getElementById('header');
-  const progress = document.getElementById('scroll-progress');
-  const greetingEl = document.getElementById('greeting');
-  const clockEl = document.getElementById('live-clock');
-  const toast = document.getElementById('toast');
-  const dock = document.getElementById('dock');
+  'use strict';
 
-  /* ── SCROLL PROGRESS + COMPACT HEADER ── */
-  let scrollTicking = false;
-  window.addEventListener('scroll', () => {
-    if (scrollTicking) return;
-    scrollTicking = true;
-    requestAnimationFrame(() => {
-      const y = window.scrollY;
-      const max = document.documentElement.scrollHeight - window.innerHeight;
-      const pct = max > 0 ? (y / max) * 100 : 0;
-      if (progress) progress.style.width = `${pct}%`;
-      header?.classList.toggle('header--compact', y > 70);
-      scrollTicking = false;
-    });
-  }, { passive: true });
+  const TOAST_MS = 3000;
 
-  /* ── GREETING + CLOCK ── */
-  function getGreeting() {
-    const h = new Date().getHours();
-    if (h >= 5 && h < 12) return 'Доброе утро';
-    if (h >= 12 && h < 17) return 'Добрый день';
-    if (h >= 17 && h < 23) return 'Добрый вечер';
-    return 'Доброй ночи';
-  }
-
-  function updateClock() {
-    if (!clockEl) return;
-    const now = new Date();
-    clockEl.textContent = now.toLocaleTimeString('ru-RU', {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  }
-
-  if (greetingEl) greetingEl.textContent = getGreeting();
-  updateClock();
-  setInterval(updateClock, 30000);
-
-  /* ── WELCOME TOAST ── */
+  /* ---------- Toast ---------- */
+  const toastEl = document.getElementById('toast');
   let toastTimer = null;
-  function showToast(msg, duration = 3200) {
-    if (!toast) return;
-    toast.textContent = msg;
-    toast.classList.add('toast--show');
+
+  window.showToast = function showToast(msg, duration = TOAST_MS) {
+    if (!toastEl) return;
+    toastEl.textContent = msg;
+    toastEl.classList.add('is-visible');
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => toast.classList.remove('toast--show'), duration);
-  }
-  window.showToast = showToast;
+    toastTimer = setTimeout(() => toastEl.classList.remove('is-visible'), duration);
+  };
 
-  const hasSplash = document.getElementById('splash');
-  const splashDelay = hasSplash ? 3200 : 800;
-  try {
-    if (!localStorage.getItem('oblako-welcome-seen')) {
-      setTimeout(() => {
-        showToast('Добро пожаловать в OBLAKO');
-        localStorage.setItem('oblako-welcome-seen', '1');
-      }, splashDelay);
-    }
-  } catch (_) {
-    setTimeout(() => showToast('Добро пожаловать в OBLAKO'), splashDelay);
-  }
+  /* ---------- Dock ---------- */
+  const ACTIONS = {
+    home: () => window.OBLAKO?.goHome(),
+    categories: () => window.OBLAKO?.scrollToTabs(),
+    rules: () => window.OBLAKO?.openRules(),
+    cart: () => window.OBLAKO_CART?.open(),
+  };
 
-  /* ── DOCK ── */
-  if (dock) {
-    dock.addEventListener('click', e => {
-      const btn = e.target.closest('[data-action]');
-      if (!btn || !window.OBLAKO) return;
+  const dock = document.getElementById('dock');
+  dock?.addEventListener('click', e => {
+    const btn = e.target.closest('[data-action]');
+    const action = ACTIONS[btn?.dataset.action];
+    if (!action) return;
+    action();
+    if (btn.dataset.action === 'cart') return;   // the drawer is an overlay, not a place
+    dock.querySelectorAll('.dock__btn').forEach(b => b.classList.toggle('is-active', b === btn));
+  });
 
-      const action = btn.dataset.action;
-      if (action === 'home') window.OBLAKO.goHome();
-      if (action === 'categories') window.OBLAKO.scrollToTabs();
-      if (action === 'rules') window.OBLAKO.openRules();
-      if (action === 'cart') window.OBLAKO.openCart?.();
-      if (action === 'top') window.scrollTo({ top: 0, behavior: 'smooth' });
-
-      dock.querySelectorAll('.dock__btn').forEach(b => b.classList.remove('dock__btn--active'));
-      btn.classList.add('dock__btn--active');
+  /* ---------- Service worker (offline + fast repeat visits) ---------- */
+  if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js').catch(() => {});
     });
   }
 })();

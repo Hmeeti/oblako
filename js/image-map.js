@@ -17,7 +17,6 @@ const IMAGE_MAP = {
   "hm4": "image/dishes/w400/hm4.webp",
   "hm5": "image/dishes/w400/hm5.webp",
   "hm6": "image/dishes/w400/hm6.webp",
-  "hm7": "image/dishes/w400/hm7.webp",
   "hm8": "image/dishes/w400/hm8.webp",
   "hm9": "image/dishes/w400/hm9.webp",
   "m0": "image/dishes/w400/m0.webp",

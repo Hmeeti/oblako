@@ -2,11 +2,11 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="description" content="OBLAKO — электронное меню лаундж-бара. Кухня, бар и кальянная атмосфера.">
   <meta name="theme-color" content="#0d0d0d">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="OBLAKO">
   <meta property="og:type" content="website">
   <meta property="og:title" content="OBLAKO — Меню">
@@ -20,151 +20,73 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="image/favicon.png" type="image/png">
   <link rel="apple-touch-icon" href="image/apple-touch-icon.png">
-  <link rel="preload" href="image/logo.webp" as="image" type="image/webp">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Manrope:wght@400;600;700&display=swap">
   <link rel="dns-prefetch" href="https://oblako-lppn.onrender.com">
-  <style>
-    :root{--bg:#0d0d0d;--gold:#c9a96e;--text:#f3efe6}
-    html,body{background:var(--bg);color:var(--text);margin:0}
-    .splash{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;background:#080808}
-    .splash__logo{width:min(340px,82vw);height:auto}
-  </style>
-  <link rel="stylesheet" href="css/style.css?v=10">
-  <link rel="stylesheet" href="css/cart.css">
-  <link rel="stylesheet" href="css/wow.css?v=10" media="print" onload="this.media='all'">
-  <link rel="stylesheet" href="css/fun.css" media="print" onload="this.media='all'">
-  <noscript>
-    <link rel="stylesheet" href="css/wow.css?v=10">
-    <link rel="stylesheet" href="css/fun.css">
-  </noscript>
+  <link rel="stylesheet" href="css/style.css?v=11">
+  <link rel="stylesheet" href="css/cart.css?v=11">
 </head>
 <body>
 
-  <button type="button" class="vip-badge" id="vip-badge" aria-label="VIP режим">✦ VIP</button>
-
-  <div class="scroll-progress" id="scroll-progress" aria-hidden="true"></div>
-
-  <div class="splash" id="splash">
-    <div class="splash__aurora"></div>
-    <div class="splash__inner">
-      <img src="image/logo.webp" alt="OBLAKO" class="splash__logo" width="340" height="112" decoding="async" fetchpriority="high">
-      <div class="splash__line"></div>
-      <p class="splash__tagline">Lounge Bar</p>
+  <header class="site-header">
+    <img class="site-header__logo" src="image/logo.webp" alt="OBLAKO" width="360" height="217" decoding="async" fetchpriority="high">
+    <div class="search">
+      <input class="search__input" type="search" id="search" placeholder="Поиск блюда или напитка…" aria-label="Поиск по меню" autocomplete="off" enterkeyhint="search">
+      <button class="search__clear" type="button" id="search-clear" aria-label="Очистить поиск" hidden>&times;</button>
     </div>
-  </div>
-
-  <div class="aurora" aria-hidden="true">
-    <div class="aurora__blob aurora__blob--1"></div>
-    <div class="aurora__blob aurora__blob--2"></div>
-    <div class="aurora__blob aurora__blob--3"></div>
-  </div>
-
-  <canvas class="particles" id="particles" aria-hidden="true"></canvas>
-  <div class="cursor-glow" id="cursor-glow" aria-hidden="true"></div>
-
-  <div class="watermark">
-    <img src="image/logo.webp" alt="" aria-hidden="true" width="200" height="66" loading="lazy" decoding="async">
-  </div>
-
-  <header id="header">
-    <div class="header-meta">
-      <span id="greeting"></span>
-      <span class="header-meta__sep">·</span>
-      <span id="live-clock"></span>
-    </div>
-    <div class="logo-img-wrap">
-      <img src="image/logo.webp" alt="OBLAKO" class="logo-img" width="200" height="66" decoding="async">
-    </div>
-    <div class="search-wrap">
-      <div class="search-field">
-        <input type="search" id="search" placeholder="Поиск блюда или напитка…" autocomplete="off" inputmode="search" enterkeyhint="search">
-        <button type="button" class="search-clear" id="search-clear" aria-label="Очистить поиск" hidden>&times;</button>
-      </div>
-    </div>
-    <button type="button" class="rules-access" id="open-rules">Правила заведения</button>
     <div class="view-toggle" id="view-toggle" role="group" aria-label="Вид меню">
-      <button type="button" class="view-toggle__btn active" data-view="grid" aria-label="Сетка">
+      <button class="view-toggle__btn is-active" type="button" data-view="grid" aria-label="Сетка" aria-pressed="true">
         <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="8" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/></svg>
       </button>
-      <button type="button" class="view-toggle__btn" data-view="list" aria-label="Список">
+      <button class="view-toggle__btn" type="button" data-view="list" aria-label="Список" aria-pressed="false">
         <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="3" y="4" width="18" height="4" rx="1"/><rect x="3" y="10" width="18" height="4" rx="1"/><rect x="3" y="16" width="18" height="4" rx="1"/></svg>
       </button>
     </div>
   </header>
 
-  <div class="tabs-outer">
-    <div class="tabs" id="tabs" role="tablist" aria-label="Разделы меню"></div>
-  </div>
+  <nav class="tabs" id="tabs" aria-label="Разделы меню">
+    <div class="tabs__list" id="tabs-list"></div>
+  </nav>
 
-  <main>
+  <main class="main">
     <div id="menu-root"></div>
-    <div id="rules-root" class="rules-root"></div>
-    <div class="empty" id="empty-state"></div>
+    <div id="rules-root" hidden></div>
+    <div class="empty" id="empty-state" hidden></div>
   </main>
 
   <footer class="site-footer">
-    <p class="site-footer__copy">© 2026 OBLAKO — Все права защищены</p>
-    <p class="site-footer__dev">
-      Разработано
-      <span class="site-footer__dev-name">hmeeti</span>
-    </p>
+    <p>© 2026 OBLAKO — Все права защищены</p>
+    <p class="site-footer__dev">Разработано<span class="site-footer__dev-name">hmeeti</span></p>
   </footer>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <nav class="dock" id="dock" aria-label="Быстрая навигация">
-    <button type="button" class="dock__btn" data-action="home">
+    <button class="dock__btn" type="button" data-action="home">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1h-5v-6H9v6H4a1 1 0 01-1-1V9.5z"/></svg>
       <span>Меню</span>
     </button>
-    <button type="button" class="dock__btn" data-action="categories">
+    <button class="dock__btn" type="button" data-action="categories">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
       <span>Разделы</span>
     </button>
-    <button type="button" class="dock__btn" data-action="rules">
+    <button class="dock__btn" type="button" data-action="rules">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M6 4h9l3 3v13H6z"/><path d="M15 4v4h4"/><path d="M9 12h6M9 16h6"/></svg>
       <span>Правила</span>
     </button>
-    <button type="button" class="dock__btn" data-action="cart">
+    <button class="dock__btn dock__btn--accent" type="button" data-action="cart">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M6 7h15l-1.5 9h-12z"/><path d="M6 7L5 3H2"/><circle cx="9" cy="20" r="1.4"/><circle cx="17" cy="20" r="1.4"/></svg>
       <span>Корзина</span>
     </button>
-    <button type="button" class="dock__btn" data-action="top">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
-      <span>Наверх</span>
-    </button>
   </nav>
 
-  <script src="js/config.js" defer></script>
-  <script src="js/data.js" defer></script>
-  <script src="js/image-map.js" defer></script>
-  <script src="js/rules.js" defer></script>
-  <script src="js/app.js?v=10" defer></script>
-  <script src="js/cart.js" defer></script>
-  <script src="js/effects.js" defer></script>
-  <script src="js/ui.js" defer></script>
-  <script src="js/wow.js" defer></script>
-  <script src="js/fun.js" defer></script>
-  <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', function () {
-        navigator.serviceWorker.register('./sw.js').then(function (reg) {
-          if (reg.update) reg.update();
-        }).catch(function () {});
-        // Drop stale image caches from older SW versions once
-        if (!localStorage.getItem('oblako-sw-images-v4')) {
-          caches.keys().then(function (keys) {
-            return Promise.all(keys.filter(function (k) {
-              return /oblako-images-v[123]$/.test(k) || k === 'oblako-static-v3';
-            }).map(function (k) { return caches.delete(k); }));
-          }).then(function () {
-            localStorage.setItem('oblako-sw-images-v4', '1');
-          }).catch(function () {});
-        }
-      });
-    }
-  </script>
+  <script src="js/config.js?v=11" defer></script>
+  <script src="js/data.js?v=11" defer></script>
+  <script src="js/image-map.js?v=11" defer></script>
+  <script src="js/rules.js?v=11" defer></script>
+  <script src="js/app.js?v=11" defer></script>
+  <script src="js/cart.js?v=11" defer></script>
+  <script src="js/ui.js?v=11" defer></script>
 </body>
 </html>

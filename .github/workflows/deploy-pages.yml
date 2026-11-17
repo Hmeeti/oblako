@@ -33,8 +33,10 @@ jobs:
         run: |
           mkdir -p _site
           # Guest menu only — do not publish admin panel on Pages
-          cp index.html _site/
+          cp index.html sw.js manifest.webmanifest _site/
           cp -r css js image _site/
+          mkdir -p _site/data
+          cp data/menu.json _site/data/
           # Drop heavy HEIC sources from Pages (keep web dishes + logo)
           rm -f _site/image/*.HEIC _site/image/*.heic || true
           rm -rf _site/image/optimized || true
