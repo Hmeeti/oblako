@@ -39,6 +39,9 @@ if (menu) {
       if (!cats.has(item.cat)) fail(`${where}: раздел «${item.cat}» не существует`);
       if (!isPrice(item.price) || !isPrice(item.price2)) fail(`${where}: цена должна быть целым числом`);
       if (item.badge && !['new', 'hit'].includes(item.badge)) fail(`${where}: неизвестная метка ${item.badge}`);
+      if (item.photoCredit && !(item.photo && item.photoCredit.author && item.photoCredit.license)) {
+        fail(`${where}: у photoCredit нужны photo, author и license`);
+      }
       if (item.photo) {
         ['w400', 'w800'].forEach(size => {
           const file = `image/dishes/${size}/${item.photo}`;

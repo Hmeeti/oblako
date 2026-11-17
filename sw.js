@@ -2,18 +2,18 @@
    - app shell & data/*.json: network first, cache as offline fallback (prices are always fresh)
    - dish photos: cache first (the admin gives every new photo a new file name)
    - /admin/ is never intercepted */
-const VERSION = 'v12';
+const VERSION = 'v13';
 const CACHE_STATIC = `oblako-static-${VERSION}`;
 const CACHE_IMAGES = `oblako-images-${VERSION}`;
 
 const PRECACHE = [
   './',
   './index.html',
-  './css/style.css?v=12',
-  './css/cart.css?v=12',
-  './js/app.js?v=12',
-  './js/cart.js?v=12',
-  './js/ui.js?v=12',
+  './css/style.css?v=13',
+  './css/cart.css?v=13',
+  './js/app.js?v=13',
+  './js/cart.js?v=13',
+  './js/ui.js?v=13',
   './image/logo.webp',
   './image/favicon.png',
   './manifest.webmanifest',

@@ -917,6 +917,8 @@
     }
     ['volume', 'desc', 'about'].forEach(k => { if (text(k)) next[k] = text(k); });
     if (ui.editorPhoto) next.photo = ui.editorPhoto;
+    // keep the stock-photo author credit while the same photo stays (licence requirement)
+    if (ui.editorPhoto && ui.editorPhoto === item.photo && item.photoCredit) next.photoCredit = item.photoCredit;
     if (f.badge.value) next.badge = f.badge.value;
     if (f.stop.checked) next.stop = true;
 

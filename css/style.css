@@ -912,6 +912,15 @@ button {
   text-align: center;
 }
 
+.lightbox__credit {
+  display: block;
+  margin-top: var(--space-1);
+  color: var(--color-muted);
+  font-size: var(--fs-xs);
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
 .lightbox__close {
   position: absolute;
   top: calc(env(safe-area-inset-top) + var(--space-3));

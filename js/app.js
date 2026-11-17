@@ -184,6 +184,11 @@
     img.loading = eager ? 'eager' : 'lazy';
     if (eager) img.fetchPriority = 'high';
     img.dataset.full = photoUrl(item, 800);
+    // free-licence stock photos must credit the author (shown in the photo viewer)
+    if (item.photoCredit) {
+      img.dataset.credit = `Фото: ${item.photoCredit.author}, ${item.photoCredit.license}`;
+      img.dataset.creditUrl = item.photoCredit.url || '';
+    }
     img.srcset = `${photoUrl(item, 400)} 400w, ${photoUrl(item, 800)} 800w`;
     img.sizes = '(max-width: 767px) 50vw, 260px';
     img.src = photoUrl(item, 400);
@@ -510,6 +515,7 @@
       <figure class="lightbox__figure">
         <img class="lightbox__img" alt="">
         <figcaption class="lightbox__cap"></figcaption>
+        <a class="lightbox__credit" target="_blank" rel="noopener"></a>
       </figure>
       <button type="button" class="lightbox__close" data-close aria-label="Закрыть">✕</button>`;
     document.body.appendChild(lightbox);
@@ -536,6 +542,11 @@
     big.src = img.dataset.full || img.src;
     big.alt = img.alt;
     box.querySelector('.lightbox__cap').textContent = img.alt;
+    const credit = box.querySelector('.lightbox__credit');
+    credit.textContent = img.dataset.credit || '';
+    credit.hidden = !img.dataset.credit;
+    if (img.dataset.creditUrl) credit.href = img.dataset.creditUrl;
+    else credit.removeAttribute('href');
     lastFocus = document.activeElement;
     box.hidden = false;
     document.body.classList.add('is-locked');
